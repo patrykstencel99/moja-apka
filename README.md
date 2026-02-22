@@ -54,6 +54,25 @@ Aplikacja: `http://localhost:3000`
 npm run test
 ```
 
+## CI (GitHub Actions)
+
+Workflow `.github/workflows/ci.yml` uruchamia:
+
+- lint
+- test
+- build
+
+Triggery:
+
+- `pull_request` (kazdy branch)
+- `push` na `main`
+
+Uruchomienie lokalnie (to samo co pipeline):
+
+```bash
+npm run ci
+```
+
 ## Deploy (free/easy)
 
 1. Postgres: utworz baze w Supabase Free.
