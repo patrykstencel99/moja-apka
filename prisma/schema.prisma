@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ActivityType {
+  BOOLEAN
+  NUMERIC_0_10
+}
+
+enum BadgeType {
+  FIRST_CHECKIN
+  STREAK_7
+  CHECKINS_30
+  THREE_ENTRIES_ONE_DAY
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  timezone            String               @default("UTC")
+  pinHash             String
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  activities          ActivityDefinition[]
+  checkIns            CheckIn[]
+  sessions            Session[]
+  badgeAwards         BadgeAward[]
+  gamificationState   GamificationState?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ActivityDefinition {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  category   String
+  type       ActivityType
+  isStarter  Boolean      @default(false)
+  archivedAt DateTime?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  values     CheckInActivityValue[]
+
+  @@unique([userId, name])
+  @@index([userId, archivedAt])
+}
+
+model CheckIn {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime              @default(now())
+  localDate     String
+  mood          Int
+  energy        Int
+  journal       String?
+  clientEventId String?
+  values        CheckInActivityValue[]
+
+  @@index([userId, createdAt])
+  @@index([userId, localDate])
+  @@unique([userId, clientEventId])
+}
+
+model CheckInActivityValue {
+  id           String             @id @default(cuid())
+  checkInId    String
+  checkIn      CheckIn            @relation(fields: [checkInId], references: [id], onDelete: Cascade)
+  activityId   String
+  activity     ActivityDefinition @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  booleanValue Boolean?
+  numericValue Int?
+
+  @@unique([checkInId, activityId])
+  @@index([activityId])
+}
+
+model GamificationState {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentStreak Int      @default(0)
+  bestStreak    Int      @default(0)
+  totalCheckIns Int      @default(0)
+  totalXp       Int      @default(0)
+  level         Int      @default(1)
+  lastCheckInAt DateTime?
+  updatedAt     DateTime @updatedAt
+}
+
+model BadgeAward {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     BadgeType
+  awardedAt DateTime  @default(now())
+
+  @@unique([userId, badge])
+  @@index([userId])
+}

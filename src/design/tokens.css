@@ -1,0 +1,58 @@
+:root {
+  /* Color tokens */
+  --color-obsidian: #0a0a0b;
+  --color-ivory: #f6f6f3;
+  --color-charcoal: #1c1f26;
+  --color-silver: #b9bec8;
+  --color-gold: #c8a35d;
+  --color-burgundy: #5b1f2a;
+  --color-royal-blue: #1e3fae;
+  --color-deep-purple: #5b3a75;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Type tokens */
+  --font-ui: 'Plus Jakarta Sans', 'Avenir Next', 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'Plus Jakarta Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.35rem;
+  --text-2xl: 1.8rem;
+  --text-3xl: 2.4rem;
+
+  /* Spacing tokens */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radius tokens */
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  /* Shadow tokens */
+  --shadow-sm: 0 8px 24px rgba(10, 10, 11, 0.08);
+  --shadow-md: 0 20px 50px rgba(10, 10, 11, 0.16);
+  --shadow-glow: 0 0 0 1px rgba(200, 163, 93, 0.24), 0 10px 28px rgba(200, 163, 93, 0.16);
+
+  /* Motion tokens */
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+  --duration-slow: 320ms;
+  --easing-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Layout tokens */
+  --content-max: 1240px;
+  --grid-desktop: 12;
+  --grid-tablet: 6;
+  --grid-mobile: 4;
+}

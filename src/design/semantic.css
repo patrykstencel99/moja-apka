@@ -1,0 +1,41 @@
+:root[data-theme='pf-premium'] {
+  --bg-canvas: var(--color-ivory);
+  --bg-overlay: rgba(10, 10, 11, 0.06);
+  --bg-panel: rgba(255, 255, 255, 0.88);
+  --bg-panel-elevated: rgba(255, 255, 255, 0.96);
+  --bg-inset: rgba(28, 31, 38, 0.05);
+  --bg-strong: linear-gradient(140deg, #0a0a0b 0%, #1c1f26 60%, #2a3040 100%);
+
+  --text-primary: #11141a;
+  --text-secondary: #4a5261;
+  --text-muted: #707889;
+  --text-inverse: #f7f8fb;
+
+  --line-default: rgba(24, 28, 38, 0.16);
+  --line-strong: rgba(24, 28, 38, 0.26);
+  --line-focus: rgba(200, 163, 93, 0.52);
+
+  --accent-primary: var(--color-gold);
+  --accent-secondary: var(--color-royal-blue);
+  --accent-tertiary: var(--color-deep-purple);
+
+  --status-success: #1f6b43;
+  --status-warning: #8d5715;
+  --status-danger: #7d202f;
+  --status-info: #2847a9;
+
+  --surface-primary: var(--bg-panel);
+  --surface-elevated: var(--bg-panel-elevated);
+  --surface-strong: #151821;
+
+  --button-primary-bg: linear-gradient(95deg, #b98f41 0%, #c8a35d 65%, #d6b978 100%);
+  --button-primary-fg: #111319;
+  --button-secondary-bg: rgba(20, 28, 47, 0.92);
+  --button-secondary-fg: #f8f8fa;
+  --button-ghost-bg: rgba(30, 63, 174, 0.12);
+  --button-ghost-fg: #1e3fae;
+
+  --topography-line-a: rgba(185, 190, 200, 0.2);
+  --topography-line-b: rgba(200, 163, 93, 0.12);
+  --topography-glow: radial-gradient(circle at 80% 0%, rgba(200, 163, 93, 0.16) 0%, transparent 52%);
+}
