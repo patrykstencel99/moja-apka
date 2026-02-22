@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
@@ -38,7 +39,29 @@ type GamificationStatus = {
   avgEntriesPerDay: number;
 };
 
-type CheckMode = 'quick' | 'full';
+type Insight = {
+  factor: string;
+  direction: 'positive' | 'negative';
+  confidence: number;
+  lag: 0 | 1;
+  explanation: string;
+};
+
+type ReportSummary = {
+  insufficientData: boolean;
+  uniqueDays: number;
+  positive: Insight[];
+  negative: Insight[];
+};
+
+type DecisionCandidate = {
+  id: string;
+  title: string;
+  why: string;
+  minimal: string;
+};
+
+type VerdictLevel = 'niskie' | 'srednie' | 'wysokie';
 
 const ICON_LABEL: Record<string, string> = {
   moon: 'SN',
@@ -59,53 +82,156 @@ function todayLocalDate() {
   }).format(new Date());
 }
 
+function isoWeekString(date: Date): string {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNr = (target.getUTCDay() + 6) % 7;
+  target.setUTCDate(target.getUTCDate() - dayNr + 3);
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const week = 1 + Math.round((target.getTime() - firstThursday.getTime()) / 604800000);
+  return `${target.getUTCFullYear()}-${String(week).padStart(2, '0')}`;
+}
+
 function moodDescriptor(value: number) {
   if (value <= 3) {
-    return 'Niski ton emocjonalny — traktuj dzien taktycznie i ogranicz chaos.';
+    return 'Niski ton emocjonalny. Zdejmij obciazenie i tnij chaos.';
   }
   if (value <= 6) {
-    return 'Neutralnie — utrzymaj stabilne tempo i precyzje decyzji.';
+    return 'Stan neutralny. Pilnuj rytmu i prostych decyzji.';
   }
   if (value <= 8) {
-    return 'Dobry stan — to okno na decyzje o wysokiej wartosci.';
+    return 'Dobry stan. To okno na ruch o wysokiej wartosci.';
   }
-  return 'Wysoki ton — wykorzystaj momentum, ale bez impulsywnosci.';
+  return 'Wysokie momentum. Trzymaj dyscypline, nie impuls.';
 }
 
 function energyDescriptor(value: number) {
   if (value <= 3) {
-    return 'Niski zasob — priorytetem jest regeneracja i minimum krytyczne.';
+    return 'Niski zasob. Priorytetem jest ochrona energii.';
   }
   if (value <= 6) {
-    return 'Sredni zasob — pracuj blokami i tnij dystraktory.';
+    return 'Sredni zasob. Pracuj blokami i odcinaj rozproszenia.';
   }
   if (value <= 8) {
-    return 'Mocny zasob — dobry czas na najtrudniejsze zadanie dnia.';
+    return 'Mocny zasob. Dobry czas na najtrudniejszy ruch.';
   }
-  return 'Peak — trzymaj discipline i zamien energie w wykonanie.';
+  return 'Peak. Zamien zasob w konkretne wykonanie.';
 }
 
-function quickStatus(entriesToday: number) {
-  if (entriesToday === 0) {
-    return 'Brak wpisu dzisiaj';
+function signalPurpose(activity: Activity) {
+  if (activity.valenceHint === 'negative') {
+    return 'Po co: to sygnal ryzyka. Wylap trigger zanim rozbije dzien.';
   }
-  if (entriesToday < 3) {
-    return `Postep dzisiaj: ${entriesToday}/3`; 
+  if (activity.valenceHint === 'positive') {
+    return 'Po co: to sygnal wzmacniajacy. Powielaj go jako standard.';
   }
-  return 'Cel dzienny zrealizowany';
+  return 'Po co: to sygnal kontrolny. Pomaga odroznic stan od narracji.';
+}
+
+function lineFromFactor(factor: string) {
+  return factor.replace(/^["']|["']$/g, '').trim();
+}
+
+function toDecisionFromInsight(insight: Insight, index: number): DecisionCandidate {
+  const factor = lineFromFactor(insight.factor);
+  const isRisk = insight.direction === 'negative';
+  return {
+    id: `insight-${insight.direction}-${index}-${factor}`,
+    title: isRisk ? `Jutro: zabezpiecz "${factor}"` : `Jutro: powtorz "${factor}"`,
+    why: `Lag ${insight.lag}d, confidence ${insight.confidence}%: ${insight.explanation}`,
+    minimal: isRisk
+      ? `Wersja 10%: ustaw jedna bariera na "${factor}".`
+      : `Wersja 10%: wykonaj 10 minut wersji minimalnej "${factor}".`
+  };
+}
+
+function stateFallbackDecisions(params: {
+  mood: number;
+  energy: number;
+  selectedNegative: number;
+  selectedPositive: number;
+}): DecisionCandidate[] {
+  const { mood, energy, selectedNegative, selectedPositive } = params;
+  const candidates: DecisionCandidate[] = [];
+
+  if (energy <= 4 || selectedNegative >= 2) {
+    candidates.push({
+      id: 'state-protection',
+      title: 'Jutro: zabezpiecz poranek przed zjazdem energii',
+      why: 'Sygnały dnia pokazuja ryzyko spadku energii na starcie kolejnego dnia.',
+      minimal: 'Wersja 10%: 1 decyzja ochronna rano (woda + brak scrolla przez 30 min).'
+    });
+  }
+
+  if (mood <= 4) {
+    candidates.push({
+      id: 'state-friction',
+      title: 'Jutro: zmniejsz tarcie decyzyjne',
+      why: 'Niski mood czesto zwieksza koszt wejscia w zadania i powoduje odkladanie.',
+      minimal: 'Wersja 10%: wybierz 1 priorytet i 15 minut startu bez perfekcjonizmu.'
+    });
+  }
+
+  if (selectedPositive >= 1 && energy >= 6) {
+    candidates.push({
+      id: 'state-repeat-win',
+      title: 'Jutro: zduplikuj dzisiejszy sygnal dzialajacy',
+      why: 'Masz sygnal, ktory wspieral wynik. Utrwal go jako standard.',
+      minimal: 'Wersja 10%: odtworz tylko pierwszy krok dzialajacego schematu.'
+    });
+  }
+
+  if (candidates.length === 0) {
+    candidates.push({
+      id: 'state-default',
+      title: 'Jutro: 60 minut glebokiej pracy przed poludniem',
+      why: 'Brak silnych sygnalow ryzyka. Najlepszy ruch to jeden klarowny blok wykonania.',
+      minimal: 'Wersja 10%: 10 minut koncentracji bez notyfikacji.'
+    });
+  }
+
+  return candidates;
+}
+
+function dedupeDecisions(candidates: DecisionCandidate[]) {
+  const seen = new Set<string>();
+  return candidates.filter((candidate) => {
+    if (seen.has(candidate.title)) {
+      return false;
+    }
+    seen.add(candidate.title);
+    return true;
+  });
+}
+
+function computeVerdict(params: { mood: number; energy: number; selectedNegative: number }): {
+  level: VerdictLevel;
+  line: string;
+} {
+  const score = Math.max(0, (10 - params.energy) + (params.mood <= 4 ? 2 : 0) + params.selectedNegative * 2);
+  if (score >= 10) {
+    return { level: 'wysokie', line: 'Verdict: Dzis ryzyko spadku energii jest wysokie.' };
+  }
+  if (score >= 6) {
+    return { level: 'srednie', line: 'Verdict: Dzis ryzyko spadku energii jest srednie.' };
+  }
+  return { level: 'niskie', line: 'Verdict: Dzis ryzyko spadku energii jest niskie.' };
 }
 
 export function DashboardClient() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [gamification, setGamification] = useState<GamificationStatus | null>(null);
+  const [weeklyReport, setWeeklyReport] = useState<ReportSummary | null>(null);
   const [values, setValues] = useState<Record<string, number | boolean>>({});
   const [mood, setMood] = useState(6);
   const [energy, setEnergy] = useState(6);
   const [journal, setJournal] = useState('');
-  const [mode, setMode] = useState<CheckMode>('quick');
-  const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('Wszystkie');
+  const [fullContext, setFullContext] = useState(false);
+  const [decisionIndex, setDecisionIndex] = useState(0);
+  const [acceptedMove, setAcceptedMove] = useState<string | null>(null);
+  const [skipReason, setSkipReason] = useState('');
+  const [showSkipReason, setShowSkipReason] = useState(false);
+  const [verdictVisible, setVerdictVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string | null>(null);
@@ -114,15 +240,17 @@ export function DashboardClient() {
 
   const load = useCallback(async () => {
     setError(null);
+    const week = isoWeekString(new Date());
 
-    const [activitiesRes, checkinsRes, gamRes] = await Promise.all([
-      fetch('/api/setup/activities'),
+    const [activitiesRes, checkinsRes, gamRes, weeklyRes] = await Promise.all([
+      fetch('/api/systems/activities'),
       fetch(`/api/checkins?from=${localDate}&to=${localDate}`),
-      fetch('/api/gamification/status')
+      fetch('/api/gamification/status'),
+      fetch(`/api/review/weekly?week=${week}`)
     ]);
 
     if (!activitiesRes.ok || !checkinsRes.ok || !gamRes.ok) {
-      setError('Nie udalo sie zsynchronizowac danych dashboardu.');
+      setError('Nie udalo sie zsynchronizowac danych dnia.');
       return;
     }
 
@@ -133,6 +261,10 @@ export function DashboardClient() {
     setActivities(activitiesData.activities);
     setCheckins(checkinsData.checkIns);
     setGamification(gamData);
+
+    if (weeklyRes.ok) {
+      setWeeklyReport((await weeklyRes.json()) as ReportSummary);
+    }
 
     setValues((prev) => {
       const next: Record<string, number | boolean> = { ...prev };
@@ -172,47 +304,103 @@ export function DashboardClient() {
     return () => window.removeEventListener('online', onOnline);
   }, [load]);
 
-  const categories = useMemo(
-    () => ['Wszystkie', ...Array.from(new Set(activities.map((activity) => activity.category)))],
+  const sortedActivities = useMemo(
+    () => [...activities].sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50)),
     [activities]
   );
+  const topSignals = useMemo(() => sortedActivities.slice(0, 5), [sortedActivities]);
+  const coreSignals = useMemo(() => topSignals.slice(0, 3), [topSignals]);
+  const extraSignals = useMemo(() => topSignals.slice(3), [topSignals]);
+  const additionalSignals = useMemo(() => sortedActivities.slice(5), [sortedActivities]);
 
-  const filtered = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+  const selectedNegative = useMemo(
+    () =>
+      topSignals.filter((activity) => {
+        if (activity.valenceHint !== 'negative') {
+          return false;
+        }
+        const value = values[activity.id];
+        if (activity.type === 'BOOLEAN') {
+          return Boolean(value);
+        }
+        return Number(value ?? 0) >= 7;
+      }).length,
+    [topSignals, values]
+  );
 
-    return activities
-      .filter((activity) => (category === 'Wszystkie' ? true : activity.category === category))
-      .filter((activity) =>
-        normalizedQuery.length === 0
-          ? true
-          : `${activity.name} ${activity.category}`.toLowerCase().includes(normalizedQuery)
-      )
-      .sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
-  }, [activities, category, query]);
+  const selectedPositive = useMemo(
+    () =>
+      topSignals.filter((activity) => {
+        if (activity.valenceHint !== 'positive') {
+          return false;
+        }
+        const value = values[activity.id];
+        if (activity.type === 'BOOLEAN') {
+          return Boolean(value);
+        }
+        return Number(value ?? 0) >= 7;
+      }).length,
+    [topSignals, values]
+  );
 
-  const visibleActivities = useMemo(() => {
-    if (mode === 'quick') {
-      const quickPool = filtered.length > 0 ? filtered : activities;
-      return [...quickPool].sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50)).slice(0, 8);
+  const decisionCandidates = useMemo(() => {
+    const insightBased: DecisionCandidate[] = [];
+
+    if (weeklyReport && !weeklyReport.insufficientData) {
+      for (const [index, insight] of weeklyReport.negative.slice(0, 2).entries()) {
+        insightBased.push(toDecisionFromInsight(insight, index));
+      }
+      for (const [index, insight] of weeklyReport.positive.slice(0, 1).entries()) {
+        insightBased.push(toDecisionFromInsight(insight, index + 2));
+      }
     }
-    return filtered;
-  }, [mode, filtered, activities]);
 
-  const groupedByCategory = useMemo(() => {
-    const map = new Map<string, Activity[]>();
-    for (const activity of visibleActivities) {
-      const list = map.get(activity.category) ?? [];
-      list.push(activity);
-      map.set(activity.category, list);
+    const fallback = stateFallbackDecisions({
+      mood,
+      energy,
+      selectedNegative,
+      selectedPositive
+    });
+
+    return dedupeDecisions([...insightBased, ...fallback]).slice(0, 3);
+  }, [weeklyReport, mood, energy, selectedNegative, selectedPositive]);
+
+  useEffect(() => {
+    if (decisionIndex >= decisionCandidates.length) {
+      setDecisionIndex(0);
     }
-    return map;
-  }, [visibleActivities]);
+  }, [decisionIndex, decisionCandidates.length]);
+
+  const currentDecision =
+    decisionCandidates[decisionIndex] ??
+    ({
+      id: 'fallback',
+      title: 'Jutro: jeden ruch o wysokiej wartosci',
+      why: 'Brak wystarczajacych sygnalow. Uzyj najprostszego eksperymentu i zbieraj dane dalej.',
+      minimal: 'Wersja 10%: 10 minut wykonania.'
+    } satisfies DecisionCandidate);
+
+  const verdict = useMemo(
+    () =>
+      computeVerdict({
+        mood,
+        energy,
+        selectedNegative
+      }),
+    [mood, energy, selectedNegative]
+  );
 
   const submitCheckIn = async () => {
     setError(null);
     setInfo(null);
+    setShowSkipReason(false);
 
-    const clientEventId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+    const clientEventId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+
+    const selectedIds = fullContext ? activities.map((activity) => activity.id) : topSignals.map((activity) => activity.id);
+    const selectedIdSet = new Set(selectedIds);
+
     const payload = {
       localDate,
       timestamp: new Date().toISOString(),
@@ -220,19 +408,21 @@ export function DashboardClient() {
       energy,
       journal,
       clientEventId,
-      values: activities.map((activity) => {
-        if (activity.type === 'BOOLEAN') {
+      values: activities
+        .filter((activity) => selectedIdSet.has(activity.id))
+        .map((activity) => {
+          if (activity.type === 'BOOLEAN') {
+            return {
+              activityId: activity.id,
+              booleanValue: Boolean(values[activity.id])
+            };
+          }
+
           return {
             activityId: activity.id,
-            booleanValue: Boolean(values[activity.id])
+            numericValue: Number(values[activity.id] ?? 0)
           };
-        }
-
-        return {
-          activityId: activity.id,
-          numericValue: Number(values[activity.id] ?? 0)
-        };
-      })
+        })
     };
 
     if (!navigator.onLine) {
@@ -244,6 +434,7 @@ export function DashboardClient() {
 
       setInfo('Tryb offline: wpis zapisany lokalnie i wysle sie po reconnect.');
       setJournal('');
+      setVerdictVisible(true);
       setCheckins((prev) => [
         ...prev,
         {
@@ -270,47 +461,64 @@ export function DashboardClient() {
       return;
     }
 
-    setInfo('Check-in zapisany.');
+    setInfo('Zamkniete. Jutro bedzie latwiejsze.');
     setJournal('');
+    setVerdictVisible(true);
     await load();
   };
 
   const entriesToday = checkins.length;
-  const hasTodayEntry = entriesToday > 0;
 
   return (
     <div className="stack-lg">
+      <section className="flow-track" aria-label="Flow decyzji">
+        <div className="flow-step is-active">
+          <span>1</span>
+          <div>
+            <strong>Capture (60s)</strong>
+            <small>Zbierz sygnaly.</small>
+          </div>
+        </div>
+        <div className="flow-step is-active">
+          <span>2</span>
+          <div>
+            <strong>Decide (10s)</strong>
+            <small>Wybierz Next Move.</small>
+          </div>
+        </div>
+        <div className="flow-step">
+          <span>3</span>
+          <div>
+            <strong>Review</strong>
+            <small>Tydzien / miesiac / rok.</small>
+          </div>
+        </div>
+      </section>
+
       <section className="control-bar">
         <StatTile
           label="Dzisiaj"
           value={new Date().toLocaleDateString('pl-PL', { day: '2-digit', month: 'long' })}
-          hint="Lokalny rytm dnia"
+          hint="Tryb 1x: jedyny ekran akcji"
         />
         <StatTile
-          label="Current streak"
+          label="Streak"
           value={gamification?.currentStreak ?? 0}
-          hint={`Best: ${gamification?.bestStreak ?? 0}`}
+          hint={`Best ${gamification?.bestStreak ?? 0}`}
           trend={(gamification?.currentStreak ?? 0) >= 7 ? 'up' : 'neutral'}
         />
         <StatTile
-          label="Poziom"
-          value={gamification?.level ?? 1}
-          hint={`XP ${gamification?.totalXp ?? 0}`}
-          trend={(gamification?.level ?? 1) >= 3 ? 'up' : 'neutral'}
+          label="Wpisy dzisiaj"
+          value={entriesToday}
+          hint="Capture zamykasz jednym check-inem"
+          trend={entriesToday === 0 ? 'down' : 'up'}
         />
         <StatTile
-          label="Quick status"
-          value={quickStatus(entriesToday)}
-          hint="Cel: 3 punkty kontrolne"
-          trend={entriesToday === 0 ? 'down' : entriesToday >= 3 ? 'up' : 'neutral'}
+          label="Tryb"
+          value={fullContext ? 'Full context' : '60 sekund'}
+          hint="Domyslnie szybko, pelen kontekst opcjonalny"
         />
       </section>
-
-      {!hasTodayEntry && (
-        <Banner tone="warning" title="Brakuje dzisiejszego wpisu">
-          Zostaw przynajmniej jeden check-in, aby utrzymac ciaglosc systemu.
-        </Banner>
-      )}
 
       {syncInfo && (
         <Banner tone="info" title="Synchronizacja">
@@ -319,7 +527,7 @@ export function DashboardClient() {
       )}
 
       {info && (
-        <Banner tone="success" title="Status zapisu">
+        <Banner tone="success" title="Status">
           {info}
         </Banner>
       )}
@@ -332,95 +540,82 @@ export function DashboardClient() {
 
       <Card
         tone="elevated"
-        title="Check-in dnia"
-        subtitle="Tryb quick zamyka wpis w 60 sekund. Tryb full daje pelny kontekst do raportu."
+        title="Capture: Dzisiaj liczy sie precyzja, nie heroizm."
+        subtitle="Jedno klikniecie = jedna intencja. Zbierasz sygnal, nie wypelniasz aplikacji."
         actions={
           <div className="mode-switch">
-            <button className={mode === 'quick' ? 'active' : ''} onClick={() => setMode('quick')} type="button">
-              Quick (60s)
+            <button className={fullContext ? '' : 'active'} onClick={() => setFullContext(false)} type="button">
+              60 sekund
             </button>
-            <button className={mode === 'full' ? 'active' : ''} onClick={() => setMode('full')} type="button">
+            <button className={fullContext ? 'active' : ''} onClick={() => setFullContext(true)} type="button">
               Full context
             </button>
           </div>
         }
       >
         <div className="grid grid-2">
-          <RangeField descriptor={moodDescriptor(mood)} label="Mood" max={10} min={1} onChange={(event) => setMood(Number(event.target.value))} value={mood} />
-          <RangeField descriptor={energyDescriptor(energy)} label="Energy" max={10} min={1} onChange={(event) => setEnergy(Number(event.target.value))} value={energy} />
+          <RangeField
+            descriptor={moodDescriptor(mood)}
+            label="Mood"
+            max={10}
+            min={1}
+            onChange={(event) => setMood(Number(event.target.value))}
+            value={mood}
+          />
+          <RangeField
+            descriptor={energyDescriptor(energy)}
+            label="Energy"
+            max={10}
+            min={1}
+            onChange={(event) => setEnergy(Number(event.target.value))}
+            value={energy}
+          />
         </div>
 
-        {mode === 'full' && (
-          <div className="filter-row">
-            <label className="stack-sm">
-              Znajdz aktywnosc
-              <input onChange={(event) => setQuery(event.target.value)} placeholder="np. trening, sen, kawa" value={query} />
-            </label>
-            <label className="stack-sm">
-              Kategoria
-              <select onChange={(event) => setCategory(event.target.value)} value={category}>
-                {categories.map((currentCategory) => (
-                  <option key={currentCategory} value={currentCategory}>
-                    {currentCategory}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
+        <small>Zapisujesz sygnal. Nie ocene.</small>
 
-        {visibleActivities.length === 0 ? (
-          <div className="empty-state">Brak aktywnosci dla aktualnego filtra. Zmien filtr albo dodaj sygnal w zakladce Setup.</div>
-        ) : mode === 'quick' ? (
-          <div className="grid grid-2">
-            {visibleActivities.map((activity) =>
-              activity.type === 'BOOLEAN' ? (
-                <CheckboxTile
-                  checked={Boolean(values[activity.id])}
-                  icon={ICON_LABEL[activity.iconKey ?? 'pulse'] ?? 'PT'}
-                  key={activity.id}
+        <div className="grid grid-3">
+          {coreSignals.map((activity) =>
+            activity.type === 'BOOLEAN' ? (
+              <CheckboxTile
+                checked={Boolean(values[activity.id])}
+                icon={ICON_LABEL[activity.iconKey ?? 'pulse'] ?? 'PT'}
+                key={activity.id}
+                onChange={(event) =>
+                  setValues((prev) => ({
+                    ...prev,
+                    [activity.id]: event.target.checked
+                  }))
+                }
+                subtitle={signalPurpose(activity)}
+                title={activity.name}
+              />
+            ) : (
+              <Card key={activity.id} subtitle={signalPurpose(activity)} title={activity.name}>
+                <RangeField
+                  label="Intensywnosc"
+                  max={10}
+                  min={0}
                   onChange={(event) =>
                     setValues((prev) => ({
                       ...prev,
-                      [activity.id]: event.target.checked
+                      [activity.id]: Number(event.target.value)
                     }))
                   }
-                  subtitle={`Priorytet ${(activity.priority ?? 50).toString()}`}
-                  title={activity.name}
+                  value={Number(values[activity.id] ?? 0)}
                 />
-              ) : (
-                <Card
-                  key={activity.id}
-                  subtitle={`Priorytet ${(activity.priority ?? 50).toString()} • Skala 0-10`}
-                  title={activity.name}
-                >
-                  <RangeField
-                    label="Intensywnosc"
-                    max={10}
-                    min={0}
-                    onChange={(event) =>
-                      setValues((prev) => ({
-                        ...prev,
-                        [activity.id]: Number(event.target.value)
-                      }))
-                    }
-                    value={Number(values[activity.id] ?? 0)}
-                  />
-                </Card>
-              )
-            )}
-          </div>
-        ) : (
-          <div className="stack">
-            {Array.from(groupedByCategory.entries()).map(([currentCategory, currentActivities]) => (
-              <Card
-                key={currentCategory}
-                subtitle={`${currentActivities.length} sygnalow`}
-                title={currentCategory}
-                tone="default"
-              >
+              </Card>
+            )
+          )}
+        </div>
+
+        {(extraSignals.length > 0 || additionalSignals.length > 0) && (
+          <details className="capture-more">
+            <summary>Wiecej sygnalow (opcjonalnie)</summary>
+            <div className="stack">
+              {extraSignals.length > 0 && (
                 <div className="grid grid-2">
-                  {currentActivities.map((activity) =>
+                  {extraSignals.map((activity) =>
                     activity.type === 'BOOLEAN' ? (
                       <CheckboxTile
                         checked={Boolean(values[activity.id])}
@@ -432,11 +627,11 @@ export function DashboardClient() {
                             [activity.id]: event.target.checked
                           }))
                         }
-                        subtitle={activity.valenceHint === 'negative' ? 'Ryzyko petli' : 'Sygnał kontrolny'}
+                        subtitle={signalPurpose(activity)}
                         title={activity.name}
                       />
                     ) : (
-                      <Card key={activity.id} subtitle="Skala 0-10" title={activity.name}>
+                      <Card key={activity.id} subtitle={signalPurpose(activity)} title={activity.name}>
                         <RangeField
                           label="Intensywnosc"
                           max={10}
@@ -453,49 +648,169 @@ export function DashboardClient() {
                     )
                   )}
                 </div>
-              </Card>
-            ))}
-          </div>
+              )}
+
+              {fullContext && additionalSignals.length > 0 && (
+                <div className="grid grid-2">
+                  {additionalSignals.map((activity) =>
+                    activity.type === 'BOOLEAN' ? (
+                      <CheckboxTile
+                        checked={Boolean(values[activity.id])}
+                        icon={ICON_LABEL[activity.iconKey ?? 'pulse'] ?? 'PT'}
+                        key={activity.id}
+                        onChange={(event) =>
+                          setValues((prev) => ({
+                            ...prev,
+                            [activity.id]: event.target.checked
+                          }))
+                        }
+                        subtitle={signalPurpose(activity)}
+                        title={activity.name}
+                      />
+                    ) : (
+                      <Card key={activity.id} subtitle={signalPurpose(activity)} title={activity.name}>
+                        <RangeField
+                          label="Intensywnosc"
+                          max={10}
+                          min={0}
+                          onChange={(event) =>
+                            setValues((prev) => ({
+                              ...prev,
+                              [activity.id]: Number(event.target.value)
+                            }))
+                          }
+                          value={Number(values[activity.id] ?? 0)}
+                        />
+                      </Card>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          </details>
         )}
 
         <label className="stack-sm">
-          Reflection prompt
-          <textarea
+          Fakt / trigger / decyzja
+          <input
             onChange={(event) => setJournal(event.target.value)}
-            placeholder="Co dzisiaj uruchomilo petle, a co pomoglo odzyskac kontrole?"
+            placeholder="np. Trigger: pozna kawa. Decyzja: bez kofeiny po 15:00."
             value={journal}
           />
-          <small>Krotki zapis faktow i decyzji. Bez narracji, tylko sygnaly i wnioski.</small>
+          <small>Ultra krotko. Fakty i decyzja, bez narracji.</small>
         </label>
 
         <Button block onClick={submitCheckIn} size="lg" variant="primary">
-          Zapisz check-in
+          Zapisz i pokaz Next Move
         </Button>
       </Card>
 
       <Card
-        tone="elevated"
-        title="Dziennik dnia"
-        subtitle="Historia dzisiejszych wpisow w kolejnosci czasowej."
+        tone="strong"
+        title="Decide: Next Move na jutro"
+        subtitle="Jedna decyzja. Jedna korekta. Jeden eksperyment."
       >
-        {checkins.length === 0 ? (
-          <div className="empty-state">Brak wpisow dzisiaj. Pierwszy check-in uruchamia analityke dnia.</div>
-        ) : (
-          <div className="timeline">
-            {checkins
-              .slice()
-              .reverse()
-              .map((entry) => (
-                <div className="timeline-item" key={entry.id}>
-                  <p>
-                    <strong>{new Date(entry.createdAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}</strong>
-                    {' • '}mood {entry.mood} • energy {entry.energy}
-                  </p>
-                  {entry.journal && <small>{entry.journal}</small>}
-                </div>
-              ))}
+        <p className="decision-title">{currentDecision.title}</p>
+        <small>{currentDecision.why}</small>
+        <div className="panel-subtle">
+          <strong>Wariant minimalny</strong>
+          <small>{currentDecision.minimal}</small>
+        </div>
+
+        <div className="decision-actions">
+          <Button
+            onClick={() => {
+              setAcceptedMove(currentDecision.title);
+              setShowSkipReason(false);
+              setSkipReason('');
+            }}
+            size="sm"
+            variant="primary"
+          >
+            Biore
+          </Button>
+          <Button
+            onClick={() => setDecisionIndex((prev) => (prev + 1) % Math.max(decisionCandidates.length, 1))}
+            size="sm"
+            variant="ghost"
+          >
+            Zamien
+          </Button>
+          <Button
+            onClick={() => {
+              setShowSkipReason(true);
+              setAcceptedMove(null);
+            }}
+            size="sm"
+            variant="secondary"
+          >
+            Nie dzis
+          </Button>
+        </div>
+
+        {acceptedMove && (
+          <Banner tone="success" title="Eksperyment ustawiony">
+            {acceptedMove}
+          </Banner>
+        )}
+
+        {showSkipReason && (
+          <label className="stack-sm">
+            Dlaczego nie dzis?
+            <select onChange={(event) => setSkipReason(event.target.value)} value={skipReason}>
+              <option value="">Wybierz powod</option>
+              <option value="za-duzy-koszt">Za duzy koszt wdrozenia</option>
+              <option value="nieadekwatne-do-jutra">Nieadekwatne do planu jutra</option>
+              <option value="potrzebuje-latwiejszej-wersji">Potrzebuje latwiejszej wersji</option>
+            </select>
+            {skipReason && <small>Feedback zapisany. Kolejna rekomendacja bedzie prostsza.</small>}
+          </label>
+        )}
+
+        {verdictVisible && (
+          <div className={`daily-verdict daily-verdict--${verdict.level}`}>
+            <p>{verdict.line}</p>
+            <small>One move: {currentDecision.title.replace(/^Jutro:\s*/, '')}</small>
+            <small>Minimal variant: {currentDecision.minimal}</small>
           </div>
         )}
+      </Card>
+
+      <Card
+        tone="elevated"
+        title="Review: historia dnia"
+        subtitle="Progressive disclosure. Tylko podglad, bez dodatkowych akcji."
+      >
+        <details>
+          <summary>Zobacz historie check-inow</summary>
+          {checkins.length === 0 ? (
+            <div className="empty-state">Brak wpisow dzisiaj. Pierwszy check-in uruchamia analityke dnia.</div>
+          ) : (
+            <div className="timeline">
+              {checkins
+                .slice()
+                .reverse()
+                .map((entry) => (
+                  <div className="timeline-item" key={entry.id}>
+                    <p>
+                      <strong>
+                        {new Date(entry.createdAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+                      </strong>
+                      {' • '}mood {entry.mood} • energy {entry.energy}
+                    </p>
+                    {entry.journal && <small>{entry.journal}</small>}
+                  </div>
+                ))}
+            </div>
+          )}
+        </details>
+
+        <div className="review-cta-row">
+          <small>Nie optymalizujesz dnia. Stabilizujesz tydzien.</small>
+          <Link className="review-link" href="/review">
+            Otworz Review 2x / 5x / 10x
+          </Link>
+        </div>
       </Card>
     </div>
   );

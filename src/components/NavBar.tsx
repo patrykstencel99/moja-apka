@@ -6,29 +6,44 @@ import { usePathname } from 'next/navigation';
 export function NavBar() {
   const pathname = usePathname();
 
+  const isPrimaryActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <nav className="top-nav">
       <div className="nav-brand">
         <span className="brand-mark">PF</span>
         <div>
           <div className="brand-title">PatternFinder</div>
-          <div className="brand-subtitle">Cockpit samoregulacji i decyzji dziennych</div>
+          <div className="brand-subtitle">Operacyjny cockpit decyzji: 1 petla dziennie</div>
         </div>
       </div>
 
-      <div className="nav-links" role="navigation">
-        <Link className={pathname === '/dashboard' ? 'active' : ''} href="/dashboard">
-          Daily
+      <div className="nav-links" role="navigation" aria-label="Primary navigation">
+        <Link className={isPrimaryActive('/today') ? 'active' : ''} href="/today">
+          Dzien (1x)
         </Link>
-        <Link className={pathname === '/setup' ? 'active' : ''} href="/setup">
-          Setup
+        <Link className={isPrimaryActive('/systems') ? 'active' : ''} href="/systems">
+          Systems
         </Link>
-        <Link className={pathname === '/reports' ? 'active' : ''} href="/reports">
-          Raporty
+        <Link className={isPrimaryActive('/review') ? 'active' : ''} href="/review">
+          Review (2x/5x/10x)
         </Link>
       </div>
 
-      <span className="nav-mode">Performance Builder</span>
+      <div className="nav-secondary-wrap">
+        <details className="nav-secondary">
+          <summary>Menu</summary>
+          <div className="nav-secondary-menu">
+            <Link className={isPrimaryActive('/experiments') ? 'active' : ''} href="/experiments">
+              Eksperymenty
+            </Link>
+            <Link className={isPrimaryActive('/settings') ? 'active' : ''} href="/settings">
+              Ustawienia
+            </Link>
+          </div>
+        </details>
+        <span className="nav-mode">Performance Builder</span>
+      </div>
     </nav>
   );
 }

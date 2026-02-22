@@ -5,7 +5,7 @@ import { PwaRegister } from '@/components/PwaRegister';
 
 export const metadata: Metadata = {
   title: 'PatternFinder',
-  description: 'Cockpit samoregulacji: codzienne decyzje, energia i wzorce',
+  description: 'Operacyjny cockpit decyzji: jedna petla dziennie, jedna korekta jutro.',
   manifest: '/manifest.webmanifest'
 };
 

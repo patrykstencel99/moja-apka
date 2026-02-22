@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
-import { describeStarterPack } from '@/lib/activity-meta';
-import { STARTER_PACKS } from '@/lib/starter-packs';
+import { describeStarterSystem } from '@/lib/activity-meta';
+import { STARTER_SYSTEMS } from '@/lib/starter-packs';
 
 export async function GET(request: NextRequest) {
   try {
     await requireApiUser(request);
     return NextResponse.json({
-      packs: STARTER_PACKS.map((pack) => ({
-        ...pack,
-        description: describeStarterPack(pack.category)
+      systems: STARTER_SYSTEMS.map((system) => ({
+        ...system,
+        description: describeStarterSystem(system.name)
       }))
     });
   } catch {

@@ -10,12 +10,25 @@ export type ActivityDefinitionUi = {
   valenceHint?: 'positive' | 'negative' | 'neutral';
 };
 
-export type StarterPack = {
+export type StarterSignal = {
+  name: string;
+  type: ActivityKind;
+  why: string;
+  cadence: 'RANO' | 'WIECZOR' | 'DZIEN';
+  definition: string;
+};
+
+export type StarterSystem = {
+  id: string;
+  name: string;
   category: string;
-  activities: Array<{
-    name: string;
-    type: ActivityKind;
-  }>;
+  outcome: string;
+  coreSignals: StarterSignal[];
+  advancedSignals: StarterSignal[];
+  defaults: {
+    checkWindow: string;
+    scoreRule: string;
+  };
 };
 
 export type InsightDirection = 'positive' | 'negative';

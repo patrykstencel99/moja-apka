@@ -15,21 +15,18 @@ const CATEGORY_ICON: Record<string, ActivityIconKey> = {
   Energia: 'bolt'
 };
 
-const PACK_DESCRIPTION: Record<string, string> = {
-  Sen: 'Jak regeneracja i pory zasypiania wplywaja na Twoja sprawczosc nastepnego dnia.',
-  Odzywianie: 'Ktore decyzje zywieniowe wspieraja stabilna energie, a ktore uruchamiaja spadki.',
-  Ruch: 'Relacja miedzy obciazeniem fizycznym a koncentracja, nastrojem i snem.',
-  Uzywki: 'Wplyw kofeiny i alkoholu na jakosc decyzji, rytm pracy i wieczorna regeneracje.',
-  Produktywnosc: 'Sygnały, ktore prowadzily do glebokiej pracy i wysokiej jakosci wykonania.',
-  Energia: 'Moment i intensywnosc fluktuacji energii w ciagu dnia.'
+const SYSTEM_DESCRIPTION: Record<string, string> = {
+  'Stabilna energia': 'System pod stabilna energie i mniejsza zmiennosc dnia.',
+  'Gleboka praca': 'System pod regularne bloki deep work i mniejszy koszt rozproszen.',
+  'Sen bez tarcia': 'System pod latwiejsze zasypianie i wyzsza regeneracje.'
 };
 
 function normalize(value: string) {
   return value.toLowerCase();
 }
 
-export function describeStarterPack(category: string) {
-  return PACK_DESCRIPTION[category] ?? 'Pakiet wspiera wykrywanie wzorcow miedzy decyzjami a stanem dnia.';
+export function describeStarterSystem(name: string) {
+  return SYSTEM_DESCRIPTION[name] ?? 'System wspiera wykrywanie wzorcow miedzy decyzjami a stanem dnia.';
 }
 
 export function inferActivityMeta(activity: { name: string; category: string }): ActivityUiMeta {

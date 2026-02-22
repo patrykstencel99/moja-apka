@@ -1,16 +1,26 @@
-import { ActivityType, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
-import { STARTER_PACKS } from '@/lib/starter-packs';
+import { getEnv } from '@/lib/env';
+import { hashPin } from '@/lib/pin';
 
 export async function ensureBootstrapUser(prisma: PrismaClient) {
+  const configuredPin = getEnv('APP_PIN', '1234');
+
   let user = await prisma.user.findFirst({ orderBy: { createdAt: 'asc' } });
 
   if (!user) {
+    const pinHash = await hashPin(configuredPin);
     user = await prisma.user.create({
       data: {
-        pinHash: 'auth-disabled',
+        pinHash,
         timezone: 'Europe/Warsaw'
       }
+    });
+  } else if (!user.pinHash.startsWith('scrypt$')) {
+    const pinHash = await hashPin(configuredPin);
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { pinHash }
     });
   }
 
@@ -19,33 +29,6 @@ export async function ensureBootstrapUser(prisma: PrismaClient) {
     create: { userId: user.id },
     update: {}
   });
-
-  for (const pack of STARTER_PACKS) {
-    for (const activity of pack.activities) {
-      await prisma.activityDefinition.upsert({
-        where: {
-          userId_name: {
-            userId: user.id,
-            name: activity.name
-          }
-        },
-        create: {
-          userId: user.id,
-          name: activity.name,
-          category: pack.category,
-          type: activity.type === 'BOOLEAN' ? ActivityType.BOOLEAN : ActivityType.NUMERIC_0_10,
-          isStarter: true,
-          archivedAt: null
-        },
-        update: {
-          category: pack.category,
-          type: activity.type === 'BOOLEAN' ? ActivityType.BOOLEAN : ActivityType.NUMERIC_0_10,
-          archivedAt: null,
-          isStarter: true
-        }
-      });
-    }
-  }
 
   return user;
 }

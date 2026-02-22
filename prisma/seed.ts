@@ -1,5 +1,8 @@
 import { PrismaClient, ActivityType } from '@prisma/client';
 
+import { getEnv } from '../src/lib/env';
+import { hashPin } from '../src/lib/pin';
+
 const prisma = new PrismaClient();
 
 const starterPacks = [
@@ -49,11 +52,14 @@ const starterPacks = [
 ];
 
 async function main() {
+  const appPin = getEnv('APP_PIN', '1234');
+  const pinHash = await hashPin(appPin);
+
   let user = await prisma.user.findFirst();
   if (!user) {
     user = await prisma.user.create({
       data: {
-        pinHash: 'auth-disabled',
+        pinHash,
         timezone: 'Europe/Warsaw'
       }
     });
@@ -66,7 +72,7 @@ async function main() {
   } else {
     await prisma.user.update({
       where: { id: user.id },
-      data: { pinHash: 'auth-disabled' }
+      data: { pinHash }
     });
 
     await prisma.gamificationState.upsert({
