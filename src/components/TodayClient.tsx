@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { CheckboxTile } from '@/components/ui/CheckboxTile';
 import { RangeField } from '@/components/ui/RangeField';
 import { StatTile } from '@/components/ui/StatTile';
+import { DecisionVisualStage } from '@/components/visuals/DecisionVisualStage';
 import { enqueueCheckIn, flushQueuedCheckIns } from '@/lib/offline-queue';
 import { buildNextMove, type GeneratedNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
 import {
@@ -539,6 +540,18 @@ export function TodayClient({ onboardingMode = false }: Props) {
           </div>
         </Card>
       )}
+
+      <Card
+        tone="elevated"
+        title="Warstwa wizualna: instrumenty precyzji"
+        subtitle="Interaktywny podglad. Przesun kursor po planszy i zmien motyw."
+      >
+        <DecisionVisualStage
+          energy={energy}
+          mood={mood}
+          signals={topCoreSignals.map((signal) => signal.name)}
+        />
+      </Card>
 
       <Card
         tone="elevated"

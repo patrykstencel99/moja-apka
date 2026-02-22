@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const ONBOARDING_COOKIE = 'pf_onboarded';
+import { ONBOARDING_COOKIE } from '@/lib/session-constants';
 
 export async function POST() {
   const response = NextResponse.json({ ok: true });

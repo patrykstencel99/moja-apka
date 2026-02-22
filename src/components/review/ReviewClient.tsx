@@ -169,6 +169,27 @@ function heatClass(value: number) {
   return 'heat-neutral';
 }
 
+function buildTrendPath(values: number[]) {
+  if (values.length === 0) {
+    return { path: '', points: [] as Array<{ x: number; y: number; value: number }> };
+  }
+
+  const width = 700;
+  const height = 180;
+  const stepX = width / Math.max(1, values.length - 1);
+  const points = values.map((value, index) => ({
+    x: Number((index * stepX).toFixed(2)),
+    y: Number((height - (Math.max(0, Math.min(10, value)) / 10) * (height - 24) - 12).toFixed(2)),
+    value
+  }));
+
+  const path = points
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' ');
+
+  return { path, points };
+}
+
 function monthName(month: number) {
   return new Date(2026, month, 1).toLocaleDateString('pl-PL', { month: 'long' });
 }
@@ -277,6 +298,10 @@ export function ReviewClient() {
   }, []);
 
   const weekAvg = useMemo(() => dayAverages(weekCheckins), [weekCheckins]);
+  const weekTrend = useMemo(() => {
+    const values = weekDays.map((day) => weekAvg.get(day.key)?.energy ?? 0);
+    return buildTrendPath(values);
+  }, [weekAvg, weekDays]);
 
   const monthGrid = useMemo(() => {
     const now = new Date();
@@ -361,6 +386,23 @@ export function ReviewClient() {
 
       {period === 'week' && (
         <Card tone="elevated" title="Tydzien (2x)" subtitle="Nie optymalizujesz dnia. Stabilizujesz tydzien.">
+          <div className="review-trend">
+            <svg aria-label="Energy trend" viewBox="0 0 700 180">
+              <defs>
+                <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#1f6b43" stopOpacity="0.26" />
+                  <stop offset="100%" stopColor="#1f6b43" stopOpacity="0.02" />
+                </linearGradient>
+              </defs>
+              <path d={weekTrend.path} fill="none" stroke="#1f6b43" strokeWidth="3" />
+              {weekTrend.points.map((point, index) => (
+                <circle cx={point.x} cy={point.y} key={`${point.x}-${index}`} r="4.8">
+                  <title>{`Energy: ${point.value}`}</title>
+                </circle>
+              ))}
+            </svg>
+          </div>
+
           <div className="week-heatmap">
             {weekDays.map((day) => {
               const avg = weekAvg.get(day.key);

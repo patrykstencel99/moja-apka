@@ -3,15 +3,15 @@ import { promisify } from 'util';
 
 const scrypt = promisify(scryptCallback);
 
-export async function hashPin(pin: string): Promise<string> {
-  const normalized = pin.trim();
+export async function hashPassword(password: string): Promise<string> {
+  const normalized = password.trim();
   const salt = randomBytes(16).toString('hex');
   const derived = (await scrypt(normalized, salt, 64)) as Buffer;
   return `scrypt$${salt}$${derived.toString('hex')}`;
 }
 
-export async function verifyPin(pin: string, storedHash: string): Promise<boolean> {
-  const normalized = pin.trim();
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  const normalized = password.trim();
 
   if (!storedHash.startsWith('scrypt$')) {
     return normalized === storedHash;

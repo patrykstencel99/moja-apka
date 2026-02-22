@@ -1,8 +1,5 @@
 import { PrismaClient, ActivityType } from '@prisma/client';
 
-import { getEnv } from '../src/lib/env';
-import { hashPin } from '../src/lib/pin';
-
 const prisma = new PrismaClient();
 
 const starterPacks = [
@@ -52,63 +49,48 @@ const starterPacks = [
 ];
 
 async function main() {
-  const appPin = getEnv('APP_PIN', '1234');
-  const pinHash = await hashPin(appPin);
+  const users = await prisma.user.findMany({ select: { id: true, email: true } });
 
-  let user = await prisma.user.findFirst();
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        pinHash,
-        timezone: 'Europe/Warsaw'
-      }
-    });
+  if (users.length === 0) {
+    console.log('Seed skipped: brak uzytkownikow. Najpierw utworz pierwsze konto na /login.');
+    return;
+  }
 
-    await prisma.gamificationState.create({
-      data: {
-        userId: user.id
-      }
-    });
-  } else {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { pinHash }
-    });
-
+  for (const user of users) {
     await prisma.gamificationState.upsert({
       where: { userId: user.id },
       create: { userId: user.id },
       update: {}
     });
-  }
 
-  for (const pack of starterPacks) {
-    for (const activity of pack.activities) {
-      await prisma.activityDefinition.upsert({
-        where: {
-          userId_name: {
+    for (const pack of starterPacks) {
+      for (const activity of pack.activities) {
+        await prisma.activityDefinition.upsert({
+          where: {
+            userId_name: {
+              userId: user.id,
+              name: activity.name
+            }
+          },
+          create: {
             userId: user.id,
-            name: activity.name
+            name: activity.name,
+            category: pack.category,
+            type: activity.type,
+            isStarter: true
+          },
+          update: {
+            category: pack.category,
+            type: activity.type,
+            archivedAt: null,
+            isStarter: true
           }
-        },
-        create: {
-          userId: user.id,
-          name: activity.name,
-          category: pack.category,
-          type: activity.type,
-          isStarter: true
-        },
-        update: {
-          category: pack.category,
-          type: activity.type,
-          archivedAt: null,
-          isStarter: true
-        }
-      });
+        });
+      }
     }
-  }
 
-  console.log('Seed completed for user:', user.id);
+    console.log('Seed completed for user:', user.email ?? user.id);
+  }
 }
 
 main()

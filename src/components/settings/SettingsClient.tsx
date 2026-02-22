@@ -54,8 +54,8 @@ export function SettingsClient() {
         </Banner>
       )}
 
-      <Card tone="elevated" title="PIN" subtitle="Aktualny status dostepu.">
-        <p>Logowanie przez PIN jest aktywne. Wartosc PIN ustawiasz przez `APP_PIN` w env.</p>
+      <Card tone="elevated" title="Dostep" subtitle="Aktualny status logowania.">
+        <p>Logowanie dziala przez email + haslo. Pierwsze konto zakladasz na `/login`.</p>
       </Card>
 
       <Card tone="elevated" title="Backup i export" subtitle="Pobierz snapshot danych lokalnych i check-inow.">

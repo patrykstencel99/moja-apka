@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/onboarding/system', request.url));
   }
 
-  if (hasSession && isOnboarded && (pathname === '/login' || isOnboardingPath(pathname))) {
+  if (hasSession && isOnboarded && isOnboardingPath(pathname)) {
     return NextResponse.redirect(new URL('/today', request.url));
   }
 

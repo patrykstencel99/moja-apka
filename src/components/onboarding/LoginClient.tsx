@@ -1,27 +1,54 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Banner } from '@/components/ui/Banner';
 
 export function LoginClient() {
   const router = useRouter();
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [hasUsers, setHasUsers] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const loadStatus = async () => {
+    const response = await fetch('/api/auth/status');
+    if (!response.ok) {
+      setHasUsers(true);
+      return;
+    }
+
+    const data = (await response.json()) as { hasUsers: boolean };
+    setHasUsers(data.hasUsers);
+  };
+
+  useEffect(() => {
+    void loadStatus();
+  }, []);
 
   const handleStart = async () => {
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch('/api/session/start', {
+    const endpoint = hasUsers ? '/api/session/start' : '/api/auth/register';
+    const payload = hasUsers
+      ? { email, password }
+      : {
+          email,
+          password,
+          confirmPassword
+        };
+
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ pin })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -43,7 +70,7 @@ export function LoginClient() {
         <span className="eyebrow">PatternFinder</span>
         <h1>Od reaktywnosci do kontroli przez codzienny system decyzji</h1>
         <p className="hero-support">
-          Wejdz do cockpitu samoregulacji. Ten MVP dziala bez konta i prowadzi Cie krok po kroku.
+          Wejdz do cockpitu samoregulacji. Pierwszy uzytkownik zaklada konto email i przejmuje aplikacje.
         </p>
       </header>
 
@@ -54,24 +81,67 @@ export function LoginClient() {
       )}
 
       <div className="stack">
-        <label className="stack-sm" htmlFor="pin">
-          PIN
+        <label className="stack-sm" htmlFor="email">
+          Email
           <input
-            autoComplete="current-password"
-            id="pin"
-            inputMode="numeric"
-            maxLength={24}
-            onChange={(event) => setPin(event.target.value)}
-            placeholder="Wpisz PIN"
-            type="password"
-            value={pin}
+            autoComplete="email"
+            id="email"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="twoj@email.com"
+            type="email"
+            value={email}
           />
         </label>
 
-        <Button onClick={handleStart} size="lg" variant="primary" disabled={isLoading || pin.trim().length < 4}>
-          {isLoading ? 'Logowanie...' : 'Wejdz do systemu'}
+        <label className="stack-sm" htmlFor="password">
+          Haslo
+          <input
+            autoComplete={hasUsers ? 'current-password' : 'new-password'}
+            id="password"
+            minLength={8}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Minimum 8 znakow"
+            type="password"
+            value={password}
+          />
+        </label>
+
+        {hasUsers === false && (
+          <label className="stack-sm" htmlFor="confirmPassword">
+            Potwierdz haslo
+            <input
+              autoComplete="new-password"
+              id="confirmPassword"
+              minLength={8}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Powtorz haslo"
+              type="password"
+              value={confirmPassword}
+            />
+          </label>
+        )}
+
+        <Button
+          onClick={handleStart}
+          size="lg"
+          variant="primary"
+          disabled={
+            isLoading ||
+            hasUsers === null ||
+            !email.trim() ||
+            password.trim().length < 8 ||
+            (hasUsers === false && confirmPassword.trim().length < 8)
+          }
+        >
+          {isLoading ? 'Logowanie...' : hasUsers ? 'Zaloguj sie' : 'Utworz pierwsze konto'}
         </Button>
-        <small>Tryb single-user. PIN ustawia sie przez `APP_PIN`.</small>
+        <small>
+          {hasUsers === null
+            ? 'Sprawdzam status konta...'
+            : hasUsers
+              ? 'Logowanie email + haslo.'
+              : 'Pierwszy uzytkownik: utworz konto email + haslo.'}
+        </small>
       </div>
     </section>
   );

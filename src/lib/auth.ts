@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
 
-import { ensureBootstrapUser } from '@/lib/bootstrap';
 import { prisma } from '@/lib/prisma';
 import { hashSessionToken, SESSION_COOKIE } from '@/lib/session';
 
@@ -24,6 +23,10 @@ export async function requireApiUser(request: NextRequest) {
   });
 
   if (!session) {
+    throw new Error('UNAUTHORIZED');
+  }
+
+  if (!session.user.email || !session.user.passwordHash) {
     throw new Error('UNAUTHORIZED');
   }
 
@@ -52,9 +55,9 @@ export async function getServerUser() {
     throw new Error('UNAUTHORIZED');
   }
 
-  return session.user;
-}
+  if (!session.user.email || !session.user.passwordHash) {
+    throw new Error('UNAUTHORIZED');
+  }
 
-export async function ensureAuthBootstrap() {
-  return ensureBootstrapUser(prisma);
+  return session.user;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
@@ -20,6 +21,12 @@ type StarterSignal = StarterSystem['coreSignals'][number];
 
 type SystemsResponse = {
   systems: StarterSystem[];
+};
+
+const SYSTEM_VISUAL: Record<string, string> = {
+  'stabilna-energia': '/visuals/radar-echo.svg',
+  'gleboka-praca': '/visuals/cockpit-minimal.svg',
+  'sen-bez-tarcia': '/visuals/premium-material.svg'
 };
 
 function cadenceLabel(value: StarterSignal['cadence']) {
@@ -173,10 +180,20 @@ export function SystemsClient() {
           <div className="grid grid-2">
             {activeSystems.map((system) => (
               <Card
+                className="card-stagger"
                 key={system.id}
                 subtitle={`Core ${system.coreSignals.length} • Adv ${system.advancedSignals.length}`}
                 title={system.name}
               >
+                <div className="system-hero">
+                  <Image
+                    alt={`${system.name} visual`}
+                    height={220}
+                    sizes="(max-width: 1020px) 100vw, 33vw"
+                    src={SYSTEM_VISUAL[system.id] ?? '/visuals/topography-map.svg'}
+                    width={640}
+                  />
+                </div>
                 <p>{system.outcome}</p>
                 <div className="setup-system-actions">
                   <Link className="review-link" href={`/systems/${system.id}`}>
@@ -197,11 +214,21 @@ export function SystemsClient() {
         <div className="grid grid-3">
           {systems.map((system) => (
             <Card
+              className="card-stagger"
               key={system.id}
               subtitle={system.outcome}
               title={system.name}
               actions={<span className="metric-badge">Core {system.coreSignals.length} • Adv {system.advancedSignals.length}</span>}
             >
+              <div className="system-hero">
+                <Image
+                  alt={`${system.name} visual`}
+                  height={220}
+                  sizes="(max-width: 1020px) 100vw, 33vw"
+                  src={SYSTEM_VISUAL[system.id] ?? '/visuals/topography-map.svg'}
+                  width={640}
+                />
+              </div>
               <div className="setup-signal-columns">
                 <div>
                   <strong>Core</strong>

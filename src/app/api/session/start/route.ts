@@ -3,13 +3,13 @@ import { randomBytes } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { ensureAuthBootstrap } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { verifyPin } from '@/lib/pin';
+import { verifyPassword } from '@/lib/password';
 import { hashSessionToken, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib/session';
 
 const bodySchema = z.object({
-  pin: z.string().min(4).max(24)
+  email: z.string().email(),
+  password: z.string().min(8).max(128)
 });
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -20,10 +20,30 @@ export async function POST(request: NextRequest) {
   const parsed = bodySchema.safeParse(body);
 
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Podaj poprawny PIN.' }, { status: 400 });
+    return NextResponse.json({ error: 'Podaj poprawny email i haslo.' }, { status: 400 });
   }
 
-  const user = await ensureAuthBootstrap();
+  const email = parsed.data.email.trim().toLowerCase();
+  const claimedUsers = await prisma.user.count({
+    where: {
+      email: {
+        not: null
+      }
+    }
+  });
+
+  if (claimedUsers === 0) {
+    return NextResponse.json({ error: 'Najpierw utworz pierwsze konto.' }, { status: 403 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!user || !user.passwordHash) {
+    return NextResponse.json({ error: 'Niepoprawny email lub haslo.' }, { status: 401 });
+  }
+
   const now = new Date();
 
   if (user.lockedUntil && user.lockedUntil > now) {
@@ -35,7 +55,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const isValid = await verifyPin(parsed.data.pin, user.pinHash);
+  const isValid = await verifyPassword(parsed.data.password, user.passwordHash);
   if (!isValid) {
     const attempts = user.failedLoginAttempts + 1;
     const shouldLock = attempts >= MAX_FAILED_ATTEMPTS;
@@ -51,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: shouldLock ? 'Konto czasowo zablokowane po wielu probach.' : 'Niepoprawny PIN.'
+        error: shouldLock ? 'Konto czasowo zablokowane po wielu probach.' : 'Niepoprawny email lub haslo.'
       },
       { status: shouldLock ? 429 : 401 }
     );
