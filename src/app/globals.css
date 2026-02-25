@@ -1186,6 +1186,12 @@ input[type='checkbox'] {
   transform: scale(1.08);
 }
 
+.year-dot.is-today:not(.is-active) {
+  box-shadow:
+    0 0 0 2px rgba(8, 12, 19, 0.86),
+    0 0 0 3px rgba(191, 198, 208, 0.74);
+}
+
 @keyframes float-title {
   0%,
   100% {
@@ -1478,6 +1484,100 @@ input[type='checkbox'] {
 .range-field__descriptor {
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.checkin-range-grid {
+  gap: var(--space-2);
+}
+
+.checkin-range.checkin-range--compact {
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--line-default);
+  border-radius: var(--radius-sm);
+  gap: 0.35rem;
+  padding: 0.5rem 0.62rem;
+}
+
+.checkin-range--compact .range-field__top span {
+  font-size: 0.8rem;
+}
+
+.checkin-range--compact .range-field__top strong {
+  font-size: 1.02rem;
+}
+
+.checkin-range--compact .range-field__descriptor {
+  font-size: 0.71rem;
+  line-height: 1.25;
+}
+
+.quick-signals-grid {
+  gap: var(--space-2);
+}
+
+.quick-signal-tile {
+  gap: var(--space-2);
+  min-height: 82px;
+  padding: 0.55rem 0.62rem;
+}
+
+.quick-signal-tile .checkbox-tile__head {
+  gap: var(--space-2);
+}
+
+.quick-signal-tile .checkbox-tile__icon {
+  height: 22px;
+  width: 22px;
+}
+
+.quick-signal-tile strong {
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.quick-signal-tile small {
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.quick-signal-card {
+  gap: var(--space-2);
+  min-height: 82px;
+  padding: 0.55rem 0.62rem;
+}
+
+.quick-signal-card .ui-card__header {
+  gap: var(--space-2);
+}
+
+.quick-signal-card .ui-card__title {
+  font-size: 0.84rem;
+  line-height: 1.2;
+  margin-bottom: 0.15rem;
+}
+
+.quick-signal-card .ui-card__subtitle {
+  font-size: 0.72rem;
+}
+
+.quick-signal-card .ui-card__body {
+  gap: var(--space-2);
+}
+
+.quick-signal-range .range-field__top span {
+  font-size: 0.76rem;
+}
+
+.quick-signal-range .range-field__top strong {
+  font-size: 0.94rem;
+}
+
+.quick-signal-range .range-field__descriptor {
+  font-size: 0.68rem;
+}
+
+.journal-answer-field {
+  gap: 0.38rem;
 }
 
 .checkbox-tile {

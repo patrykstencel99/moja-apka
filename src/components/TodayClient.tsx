@@ -664,6 +664,7 @@ export function TodayClient() {
       return (
         <CheckboxTile
           checked={Boolean(values[activity.id])}
+          className="quick-signal-tile"
           key={activity.id}
           onChange={(event) =>
             setValues((prev) => ({
@@ -678,8 +679,9 @@ export function TodayClient() {
     }
 
     return (
-      <Card key={activity.id} subtitle={uiCopy.today.quickCapture.rangeSubtitle} title={activity.name}>
+      <Card className="quick-signal-card" key={activity.id} subtitle={uiCopy.today.quickCapture.rangeSubtitle} title={activity.name}>
         <RangeField
+          className="quick-signal-range"
           label={uiCopy.today.quickCapture.rangeLabel}
           max={10}
           min={0}
@@ -778,13 +780,16 @@ export function TodayClient() {
                   const checkInCount = dayCountByDate.get(day.localDate) ?? 0;
                   const tone = checkInCount >= 2 ? 'double' : checkInCount === 1 ? 'single' : 'none';
                   const isActive = selectedDay === day.localDate;
+                  const isToday = day.localDate === localDate;
 
                   return (
                     <button
                       aria-label={uiCopy.today.yearView.dayAriaLabelTemplate
                         .replace('{date}', day.localDate)
                         .replace('{count}', String(checkInCount))}
-                      className={['year-dot', `year-dot--${tone}`, isActive ? 'is-active' : ''].join(' ')}
+                      className={['year-dot', `year-dot--${tone}`, isActive ? 'is-active' : '', isToday ? 'is-today' : '']
+                        .filter(Boolean)
+                        .join(' ')}
                       key={day.localDate}
                       onClick={() => selectCalendarDay(day.localDate)}
                       type="button"
@@ -894,8 +899,9 @@ export function TodayClient() {
           </Button>
         ) : (
           <>
-            <div className="grid grid-2">
+            <div className="grid grid-2 checkin-range-grid">
               <RangeField
+                className="checkin-range checkin-range--compact"
                 descriptor={uiCopy.today.quickCapture.moodDescriptor}
                 label={uiCopy.today.quickCapture.moodLabel}
                 max={10}
@@ -904,6 +910,7 @@ export function TodayClient() {
                 value={mood}
               />
               <RangeField
+                className="checkin-range checkin-range--compact"
                 descriptor={uiCopy.today.quickCapture.energyDescriptor}
                 label={uiCopy.today.quickCapture.energyLabel}
                 max={10}
@@ -916,13 +923,12 @@ export function TodayClient() {
             <small>{uiCopy.today.quickCapture.note}</small>
 
             {quickSignals.length > 0 && (
-              <div className="grid grid-3">{quickSignals.map((activity) => renderSignalInput(activity))}</div>
+              <div className="grid grid-3 quick-signals-grid">{quickSignals.map((activity) => renderSignalInput(activity))}</div>
             )}
 
-            <label className="stack-sm">
+            <label className="stack-sm journal-answer-field">
               {uiCopy.today.quickCapture.journalLabel}
               <input
-                maxLength={240}
                 onChange={(event) => setJournal(event.target.value)}
                 placeholder={uiCopy.today.quickCapture.journalPlaceholder}
                 value={journal}
