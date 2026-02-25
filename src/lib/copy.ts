@@ -4,11 +4,11 @@ export const uiCopy = {
   },
   nav: {
     brandSubtitle: 'Codziennie 1 check-in. Coraz lepsze decyzje.',
-    primaryAriaLabel: 'Nawigacja glowna',
+    primaryAriaLabel: 'Nawigacja główna',
     today: 'Dzisiaj',
     systems: 'Systemy',
-    review: 'Przeglad',
-    menu: 'Wiecej',
+    review: 'Przegląd',
+    menu: 'Więcej',
     experiments: 'Eksperymenty',
     settings: 'Ustawienia',
     modeLabel: 'Tryb wzrostu'
@@ -171,19 +171,19 @@ export const uiCopy = {
       energyShort: 'energia'
     },
     yearView: {
-      eyebrow: 'Rok decyzji',
-      title: '365 punktow skupienia. Jeden klik i widzisz prawde o dniu.',
-      subtitle: 'Kazdy kwadrat to jeden dzien. Czarny = brak check-inu, zolty = 1 wpis, zielony = 2 lub wiecej.',
+      eyebrow: 'Rok świadomych decyzji',
+      title: '365 punktów skupienia.',
+      subtitle: 'Jeden klik i widzisz prawdę o dniu. Każdy kwadrat to jeden dzień: czarny = brak check-inu, żółty = 1 wpis, zielony = 2+.',
       legendNone: 'Czarny: 0',
-      legendSingle: 'Zolty: 1',
+      legendSingle: 'Żółty: 1',
       legendDouble: 'Zielony: 2+',
-      dayAriaLabelTemplate: 'Dzien {date}. Liczba check-inow: {count}. Otworz szczegoly.',
+      dayAriaLabelTemplate: 'Dzień {date}. Liczba check-inów: {count}. Otwórz szczegóły.',
       dayTitle: 'Widok dnia',
-      dayEmpty: 'Brak check-inow w wybranym dniu.',
+      dayEmpty: 'Brak check-inów w wybranym dniu.',
       dayStats: {
-        entries: 'Liczba wpisow',
-        mood: 'Sredni nastroj',
-        energy: 'Srednia energia'
+        entries: 'Liczba wpisów',
+        mood: 'Średni nastrój',
+        energy: 'Średnia energia'
       }
     }
   },

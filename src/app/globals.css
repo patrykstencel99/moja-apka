@@ -66,8 +66,8 @@ a {
 
 main {
   margin: 0 auto;
-  max-width: min(1560px, calc(100vw - 20px));
-  padding: var(--space-4);
+  max-width: min(1780px, calc(100vw - 10px));
+  padding: clamp(0.55rem, 1.25vw, 1rem);
 }
 
 h1,
@@ -158,8 +158,8 @@ input[type='checkbox'] {
 .page-shell {
   align-items: start;
   display: grid;
-  gap: var(--space-3);
-  grid-template-columns: 246px minmax(0, 1fr);
+  gap: var(--space-2);
+  grid-template-columns: 216px minmax(0, 1fr);
 }
 
 .panel {
@@ -170,7 +170,7 @@ input[type='checkbox'] {
   box-shadow:
     0 26px 60px rgba(14, 18, 28, 0.1),
     0 0 0 1px rgba(24, 28, 38, 0.08);
-  padding: var(--space-5, 20px);
+  padding: clamp(0.9rem, 1.2vw, 1.15rem);
 }
 
 .panel-subtle {
@@ -227,12 +227,12 @@ input[type='checkbox'] {
     0 0 0 1px rgba(200, 163, 93, 0.16);
   color: var(--text-inverse);
   display: grid;
-  gap: var(--space-4);
-  min-height: calc(100vh - var(--space-12));
+  gap: var(--space-3);
+  min-height: calc(100vh - 1.6rem);
   overflow: hidden;
-  padding: 1rem 0.9rem;
+  padding: 0.8rem 0.72rem;
   position: sticky;
-  top: var(--space-4);
+  top: var(--space-3);
 }
 
 .app-sidebar::before {
@@ -267,20 +267,20 @@ input[type='checkbox'] {
   display: inline-flex;
   font-family: var(--font-display);
   font-weight: 800;
-  height: 30px;
+  height: 26px;
   justify-content: center;
-  width: 30px;
+  width: 26px;
 }
 
 .brand-title {
   font-family: var(--font-display);
-  font-size: 1.22rem;
+  font-size: 1.04rem;
   font-weight: 700;
 }
 
 .brand-subtitle {
   color: rgba(247, 248, 251, 0.72);
-  font-size: 1rem;
+  font-size: 0.84rem;
   line-height: 1.32;
 }
 
@@ -292,8 +292,8 @@ input[type='checkbox'] {
 .sidebar-group-title {
   color: rgba(246, 232, 205, 0.84);
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  letter-spacing: 0.07em;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
   margin: 0;
   text-align: center;
   text-transform: uppercase;
@@ -301,22 +301,21 @@ input[type='checkbox'] {
 
 .sidebar-links {
   display: grid;
-  gap: 0.52rem;
+  gap: 0.38rem;
 }
 
 .sidebar-link {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 10px;
   color: rgba(247, 248, 251, 0.9);
-  display: flex;
-  align-items: center;
-  font-size: 0.88rem;
+  display: grid;
+  font-size: 0.82rem;
   font-weight: 600;
-  justify-content: center;
-  line-height: 1.2;
-  min-height: 34px;
-  padding: 0.42rem 0.62rem;
+  line-height: 1.16;
+  min-height: 30px;
+  padding: 0.32rem 0.5rem;
+  place-items: center;
   text-align: center;
   transition:
     transform var(--duration-fast) var(--easing-standard),
@@ -326,7 +325,7 @@ input[type='checkbox'] {
 }
 
 .sidebar-link::before {
-  display: none;
+  content: none;
 }
 
 .sidebar-link:hover {
@@ -344,17 +343,16 @@ input[type='checkbox'] {
 }
 
 .sidebar-link.active::before {
-  background: #efce8e;
-  box-shadow: 0 0 0 3px rgba(239, 206, 142, 0.2);
+  content: none;
 }
 
 .sidebar-footer {
   align-self: end;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
   margin-top: var(--space-1);
-  padding-top: var(--space-3);
+  padding-top: var(--space-2);
 }
 
 .nav-mode {
@@ -364,12 +362,12 @@ input[type='checkbox'] {
   border-radius: 999px;
   color: rgba(255, 244, 221, 0.92);
   display: inline-flex;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 600;
   justify-content: center;
   letter-spacing: 0.03em;
-  min-height: 28px;
-  padding: 0.28rem 0.62rem;
+  min-height: 24px;
+  padding: 0.22rem 0.52rem;
   text-transform: uppercase;
 }
 
@@ -950,9 +948,9 @@ input[type='checkbox'] {
     0 30px 70px rgba(5, 7, 12, 0.46),
     inset 0 0 0 1px rgba(255, 255, 255, 0.07);
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-2);
   overflow: hidden;
-  padding: clamp(0.8rem, 1.7vw, 1.3rem);
+  padding: clamp(0.72rem, 1.2vw, 1rem);
   position: relative;
 }
 
@@ -1044,32 +1042,35 @@ input[type='checkbox'] {
 
 .year-focus-header {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.24rem;
   text-align: center;
 }
 
 .year-focus-header .eyebrow {
-  font-size: 0.68rem;
-  letter-spacing: 0.08em;
-  line-height: 1;
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  margin: 0 auto;
   white-space: nowrap;
+  width: max-content;
 }
 
 .year-focus-title {
   animation: float-title 4.6s ease-in-out infinite;
   color: #f8f7f2;
-  font-size: clamp(1.46rem, 3.2vw, 2.54rem);
-  line-height: 1.05;
+  font-size: clamp(1.08rem, 2.24vw, 1.86rem);
+  line-height: 1.08;
   margin: 0 auto;
-  max-width: 24ch;
+  max-width: 19ch;
   text-wrap: balance;
 }
 
 .year-focus-subtitle {
   color: rgba(228, 233, 244, 0.9);
-  font-size: clamp(0.86rem, 1.15vw, 0.98rem);
+  font-size: clamp(0.74rem, 0.96vw, 0.86rem);
+  line-height: 1.35;
   margin: 0 auto;
-  max-width: 78ch;
+  max-width: 72ch;
   text-align: center;
 }
 
@@ -1088,11 +1089,11 @@ input[type='checkbox'] {
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   display: inline-flex;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 600;
   gap: 0.42rem;
   letter-spacing: 0.02em;
-  padding: 0.27rem 0.54rem;
+  padding: 0.2rem 0.44rem;
 }
 
 .year-focus-legend span::before {
@@ -1122,27 +1123,27 @@ input[type='checkbox'] {
   border-radius: var(--radius-md);
   display: grid;
   gap: var(--space-2);
-  padding: 0.62rem;
+  padding: 0.5rem;
 }
 
 .year-row {
   align-items: center;
-  column-gap: var(--space-3);
+  column-gap: var(--space-2);
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-columns: 34px minmax(0, 1fr);
 }
 
 .year-row-label {
   color: rgba(230, 234, 244, 0.9);
   font-family: var(--font-mono);
-  font-size: 0.63rem;
+  font-size: 0.58rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
 .year-row-days {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   grid-template-columns: repeat(31, minmax(0, 1fr));
 }
 
@@ -1151,7 +1152,7 @@ input[type='checkbox'] {
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: pointer;
-  min-height: 9px;
+  min-height: 8px;
   padding: 0;
   transition:
     transform var(--duration-fast) var(--easing-standard),
@@ -2233,7 +2234,7 @@ input[type='checkbox'] {
 
 @media (max-width: 1020px) {
   main {
-    padding: var(--space-4);
+    padding: 0.75rem;
   }
 
   .landing-galaxy {
@@ -2269,7 +2270,7 @@ input[type='checkbox'] {
   .app-sidebar {
     gap: var(--space-4);
     min-height: auto;
-    padding: var(--space-4);
+    padding: var(--space-3);
     position: relative;
     top: 0;
   }
@@ -2290,7 +2291,7 @@ input[type='checkbox'] {
   }
 
   .year-focus-title {
-    font-size: clamp(1.28rem, 4.8vw, 2rem);
+    font-size: clamp(1.02rem, 3.8vw, 1.6rem);
   }
 
   .year-row {
@@ -2381,6 +2382,11 @@ input[type='checkbox'] {
 
   .year-focus-header {
     text-align: left;
+  }
+
+  .year-focus-header .eyebrow {
+    margin: 0;
+    width: auto;
   }
 
   .year-focus-title,
