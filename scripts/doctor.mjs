@@ -5,18 +5,23 @@ import { PrismaClient } from '@prisma/client';
 const issues = [];
 const warnings = [];
 
-const databaseUrl = process.env.DATABASE_URL?.trim();
+const DATABASE_URL_KEYS = ['DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING'];
+
+const databaseEntry = DATABASE_URL_KEYS.map((key) => ({ key, value: process.env[key]?.trim() ?? '' })).find(
+  (entry) => entry.value
+);
+const databaseUrl = databaseEntry?.value;
 const sessionSecret = process.env.SESSION_SECRET?.trim();
 const appUrl = process.env.APP_URL?.trim();
 
 if (!databaseUrl) {
-  issues.push('Brak DATABASE_URL.');
+  issues.push('Brak URL bazy (ustaw DATABASE_URL lub POSTGRES_PRISMA_URL).');
 } else if (
   databaseUrl.includes('USER:PASSWORD@HOST') ||
   databaseUrl.includes('postgresql://USER') ||
   databaseUrl.includes('HOST:5432')
 ) {
-  issues.push('DATABASE_URL ma placeholder.');
+  issues.push(`${databaseEntry?.key ?? 'DATABASE_URL'} ma placeholder.`);
 }
 
 if (!sessionSecret) {
@@ -33,8 +38,11 @@ if (issues.length === 0) {
   const prisma = new PrismaClient({ log: ['error'] });
   try {
     await prisma.$queryRaw`SELECT 1`;
+    if (databaseEntry?.key && databaseEntry.key !== 'DATABASE_URL') {
+      warnings.push(`Polaczenie bazy idzie przez ${databaseEntry.key}.`);
+    }
   } catch {
-    issues.push('Brak polaczenia z baza (DATABASE_URL nie dziala).');
+    issues.push(`Brak polaczenia z baza (${databaseEntry?.key ?? 'DATABASE_URL'} nie dziala).`);
   } finally {
     await prisma.$disconnect();
   }

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { apiCopy } from '@/lib/copy';
+import { isPlaceholderDatabaseUrl, resolveDatabaseUrl } from '@/lib/database-url';
 import { databaseSetupMessage, isDatabaseConnectionError } from '@/lib/db-errors';
 
 export type SetupPayload = {
@@ -28,7 +29,6 @@ type SetupModePayload = {
 
 export type AuthStatusPayload = ReadyPayload | SetupModePayload;
 
-const DATABASE_URL_PLACEHOLDERS = ['USER:PASSWORD@HOST', 'postgresql://USER', 'HOST:5432'];
 const SESSION_SECRET_PLACEHOLDERS = ['replace-with-long-random-secret', 'changeme', 'placeholder'];
 
 function isPlaceholder(value: string, patterns: string[]) {
@@ -44,7 +44,8 @@ function setupPayload(input: SetupPayload): SetupModePayload {
 }
 
 export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
+  const database = resolveDatabaseUrl();
+  const databaseUrl = database.url;
   if (!databaseUrl) {
     return setupPayload({
       code: 'MISSING_DATABASE_URL',
@@ -54,7 +55,7 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
     });
   }
 
-  if (isPlaceholder(databaseUrl, DATABASE_URL_PLACEHOLDERS)) {
+  if (isPlaceholderDatabaseUrl(databaseUrl)) {
     return setupPayload({
       code: 'PLACEHOLDER_DATABASE_URL',
       title: apiCopy.runtime.placeholderDatabaseUrlTitle,
