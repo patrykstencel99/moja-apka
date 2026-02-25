@@ -6,7 +6,7 @@
     "dev": "node scripts/dev-with-db.mjs",
     "dev:next": "next dev",
     "dev:fresh": "rm -rf .next && npm run dev",
-    "build": "next build",
+    "build": "npm run prisma:generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
