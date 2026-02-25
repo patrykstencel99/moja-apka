@@ -30,3 +30,12 @@ export const checkInSchema = z.object({
     )
     .max(200)
 });
+
+export const journalNoteSchema = z.object({
+  localDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  content: z.string().trim().min(1).max(8000)
+});
+
+export const journalDateSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+});

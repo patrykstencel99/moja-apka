@@ -9,6 +9,7 @@ export const uiCopy = {
     systems: 'Systemy',
     review: 'Przegląd',
     menu: 'Więcej',
+    journal: 'Dziennik',
     experiments: 'Eksperymenty',
     settings: 'Ustawienia',
     modeLabel: 'Tryb wzrostu'
@@ -51,6 +52,11 @@ export const uiCopy = {
       eyebrow: 'Eksperymenty',
       title: 'Historia decyzji',
       support: 'Sprawdzaj, co dziala i wzmacniaj skuteczne ruchy.'
+    },
+    journal: {
+      eyebrow: 'Dziennik',
+      title: 'Pisanie bez presji. Notatki przypiete do konkretnego dnia.',
+      support: 'Wybierasz dzien, piszesz i zapisujesz. Wracasz kiedy chcesz i widzisz swoja historie.'
     },
     settings: {
       eyebrow: 'Ustawienia',
@@ -344,6 +350,25 @@ export const uiCopy = {
     sessionTitle: 'Sesja',
     sessionSubtitle: 'Wylogowanie czysci lokalna sesje na tym urzadzeniu.',
     logoutButton: 'Wyloguj i wyczysc sesje'
+  },
+  journal: {
+    title: 'Dziennik dnia',
+    subtitle: 'Piszesz niezaleznie od check-inu.',
+    pickDateLabel: 'Dzien notatek',
+    todayButton: 'Dzis',
+    previousDayButton: 'Poprzedni dzien',
+    nextDayButton: 'Nastepny dzien',
+    editorTitle: 'Nowa notatka',
+    editorSubtitle: 'Retro vibe: piszesz jak w starym dzienniku podroznika.',
+    textareaPlaceholder: 'Zacznij pisac... co sie wydarzylo, co czules i co z tego bierzesz dla siebie.',
+    saveButton: 'Zapisz notatke',
+    savingButton: 'Zapisywanie...',
+    emptyState: 'Brak notatek dla tego dnia. Zapisz pierwsza.',
+    historyTitle: 'Notatki z wybranego dnia',
+    savedStatus: 'Notatka zapisana.',
+    loadError: 'Nie udalo sie pobrac notatek.',
+    saveError: 'Nie udalo sie zapisac notatki.',
+    sessionExpired: 'Sesja wygasla. Zaloguj sie ponownie.'
   }
 } as const;
 
@@ -403,6 +428,12 @@ export const apiCopy = {
     invalidPayload: 'Niepoprawne dane check-inu.',
     invalidActivities: 'Wykryto nieprawidlowe sygnaly w check-inie.',
     saveFailed: 'Nie udalo sie zapisac check-inu.'
+  },
+  journal: {
+    invalidDate: 'Podaj date w formacie YYYY-MM-DD.',
+    invalidPayload: 'Niepoprawne dane notatki.',
+    loadFailed: 'Nie udalo sie pobrac notatek.',
+    saveFailed: 'Nie udalo sie zapisac notatki.'
   },
   gamification: {
     statusFailed: 'Nie udalo sie pobrac statusu progresu.'

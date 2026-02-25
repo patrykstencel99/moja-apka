@@ -45,6 +45,7 @@ model User {
   lockedUntil         DateTime?
   activities          ActivityDefinition[]
   checkIns            CheckIn[]
+  journalNotes        JournalNote[]
   sessions            Session[]
   badgeAwards         BadgeAward[]
   gamificationState   GamificationState?
@@ -94,6 +95,18 @@ model CheckIn {
   @@index([userId, createdAt])
   @@index([userId, localDate])
   @@unique([userId, clientEventId])
+}
+
+model JournalNote {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, localDate, createdAt])
 }
 
 model CheckInActivityValue {

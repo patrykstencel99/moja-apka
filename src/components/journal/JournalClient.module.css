@@ -1,0 +1,147 @@
+.controlsRow {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.datePicker {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 220px;
+}
+
+.datePicker span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.dateInput {
+  max-width: 240px;
+}
+
+.paperCard {
+  background:
+    linear-gradient(180deg, rgba(245, 233, 206, 0.95) 0%, rgba(239, 225, 194, 0.94) 100%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.012) 0px,
+      rgba(0, 0, 0, 0.012) 1px,
+      rgba(255, 255, 255, 0.08) 1px,
+      rgba(255, 255, 255, 0.08) 32px
+    );
+  border-color: rgba(117, 80, 35, 0.22);
+  box-shadow:
+    0 14px 30px rgba(50, 31, 10, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.paperFrame {
+  background:
+    linear-gradient(180deg, rgba(250, 240, 216, 0.9) 0%, rgba(242, 227, 193, 0.86) 100%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(117, 80, 35, 0.05) 0px,
+      rgba(117, 80, 35, 0.05) 1px,
+      transparent 1px,
+      transparent 34px
+    );
+  border: 1px solid rgba(117, 80, 35, 0.22);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+  overflow: hidden;
+  padding: var(--space-3);
+}
+
+.paperTextarea {
+  background: transparent;
+  border: 0;
+  border-left: 1px solid rgba(164, 73, 55, 0.24);
+  border-radius: 0;
+  box-shadow: none;
+  color: #2b2015;
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif;
+  font-size: 1.03rem;
+  letter-spacing: 0.01em;
+  line-height: 1.75;
+  min-height: 260px;
+  padding: var(--space-2) var(--space-3);
+  resize: vertical;
+}
+
+.paperTextarea:focus {
+  border: 0;
+  border-left: 1px solid rgba(164, 73, 55, 0.34);
+  box-shadow: none;
+}
+
+.paperTextarea::placeholder {
+  color: rgba(77, 58, 34, 0.54);
+}
+
+.editorFooter {
+  align-items: center;
+  display: flex;
+  gap: var(--space-3);
+  justify-content: space-between;
+}
+
+.notesList {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.notePaper {
+  background:
+    linear-gradient(180deg, rgba(249, 238, 211, 0.96) 0%, rgba(243, 228, 196, 0.94) 100%),
+    repeating-linear-gradient(
+      180deg,
+      rgba(117, 80, 35, 0.04) 0px,
+      rgba(117, 80, 35, 0.04) 1px,
+      transparent 1px,
+      transparent 30px
+    );
+  border: 1px solid rgba(117, 80, 35, 0.2);
+  border-radius: 10px;
+  box-shadow: 0 10px 20px rgba(66, 44, 16, 0.14);
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.noteMeta {
+  color: rgba(77, 58, 34, 0.66);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.noteContent {
+  color: #2f2418;
+  font-family: 'Palatino Linotype', 'Book Antiqua', Palatino, 'Times New Roman', serif;
+  font-size: 1.04rem;
+  line-height: 1.74;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .controlsRow {
+    align-items: stretch;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .datePicker,
+  .dateInput {
+    max-width: none;
+    min-width: 0;
+  }
+
+  .editorFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
