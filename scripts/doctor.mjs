@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 const issues = [];
 const warnings = [];
 
-const DATABASE_URL_KEYS = ['DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING'];
+const DATABASE_URL_KEYS = ['POSTGRES_PRISMA_URL', 'DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING'];
 
 const databaseEntry = DATABASE_URL_KEYS.map((key) => ({ key, value: process.env[key]?.trim() ?? '' })).find(
   (entry) => entry.value

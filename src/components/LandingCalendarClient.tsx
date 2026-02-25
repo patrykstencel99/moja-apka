@@ -7,7 +7,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { uiCopy } from '@/lib/copy';
 
 const DOTS_TOTAL = 365;
-const DIVE_NAV_DELAY_MS = 980;
+const DIVE_FADE_DELAY_MS = 520;
+const DIVE_NAV_DELAY_MS = 1020;
 
 type DivePoint = {
   x: number;
@@ -23,7 +24,8 @@ export function LandingCalendarClient() {
   const [revealReady, setRevealReady] = useState(false);
   const [dotDelays, setDotDelays] = useState<number[]>(() => Array.from({ length: DOTS_TOTAL }, () => 0));
   const [divePoint, setDivePoint] = useState<DivePoint | null>(null);
-  const [divePhase, setDivePhase] = useState<'idle' | 'expanding' | 'fading'>('idle');
+  const [isDiving, setIsDiving] = useState(false);
+  const [veilVisible, setVeilVisible] = useState(false);
 
   const dots = useMemo(() => Array.from({ length: DOTS_TOTAL }, (_, index) => index), []);
 
@@ -92,11 +94,11 @@ export function LandingCalendarClient() {
       y: rect.top + rect.height / 2,
       size: rect.width
     });
-    setDivePhase('expanding');
+    setIsDiving(true);
 
     window.setTimeout(() => {
-      setDivePhase('fading');
-    }, 620);
+      setVeilVisible(true);
+    }, DIVE_FADE_DELAY_MS);
 
     window.setTimeout(() => {
       router.push('/login');
@@ -104,7 +106,7 @@ export function LandingCalendarClient() {
   };
 
   return (
-    <section className={['landing-galaxy', divePhase !== 'idle' ? 'is-diving' : ''].join(' ')}>
+    <section className={['landing-galaxy', isDiving ? 'is-diving' : ''].join(' ')}>
       <div aria-hidden className="landing-cosmos-art">
         <span className="landing-orbit landing-orbit--outer" />
         <span className="landing-orbit landing-orbit--inner" />
@@ -118,6 +120,12 @@ export function LandingCalendarClient() {
       <div className="landing-inner">
         <p className="landing-eyebrow">{uiCopy.landing.eyebrow}</p>
         <h1 className="landing-title">{uiCopy.landing.title}</h1>
+        <h2 className="landing-title-secondary">
+          {uiCopy.landing.titleSecondaryLead}{' '}
+          <span className="landing-emphasis landing-emphasis--green">{uiCopy.landing.titleSecondaryGreen}</span>{' '}
+          {uiCopy.landing.titleSecondaryJoiner}{' '}
+          <span className="landing-emphasis landing-emphasis--red">{uiCopy.landing.titleSecondaryRed}</span>
+        </h2>
         <p className="landing-subtitle">{uiCopy.landing.subtitle}</p>
 
         <div className="landing-grid-wrap">
@@ -139,9 +147,7 @@ export function LandingCalendarClient() {
       {divePoint && (
         <div
           aria-hidden
-          className={['landing-dive', divePhase === 'expanding' ? 'is-expanding' : '', divePhase === 'fading' ? 'is-fading' : '']
-            .filter(Boolean)
-            .join(' ')}
+          className={['landing-dive', isDiving ? 'is-active' : ''].join(' ')}
           style={
             {
               '--dive-x': `${divePoint.x}px`,
@@ -152,7 +158,7 @@ export function LandingCalendarClient() {
         />
       )}
 
-      <div aria-hidden className={['landing-transition-veil', divePhase === 'fading' ? 'is-visible' : ''].join(' ')} />
+      <div aria-hidden className={['landing-transition-veil', veilVisible ? 'is-visible' : ''].join(' ')} />
     </section>
   );
 }

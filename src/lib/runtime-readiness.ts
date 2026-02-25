@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { apiCopy } from '@/lib/copy';
-import { isPlaceholderDatabaseUrl, resolveDatabaseUrl } from '@/lib/database-url';
+import { describeDatabaseHost, isPlaceholderDatabaseUrl, resolveDatabaseUrl } from '@/lib/database-url';
 import { databaseSetupMessage, isDatabaseConnectionError } from '@/lib/db-errors';
 
 export type SetupPayload = {
@@ -13,6 +13,10 @@ export type SetupPayload = {
   title: string;
   message: string;
   steps: string[];
+  diagnostics?: {
+    databaseUrlSource: string | null;
+    databaseHost: string | null;
+  };
 };
 
 type ReadyPayload = {
@@ -46,12 +50,17 @@ function setupPayload(input: SetupPayload): SetupModePayload {
 export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
   const database = resolveDatabaseUrl();
   const databaseUrl = database.url;
+  const diagnostics = {
+    databaseUrlSource: database.source,
+    databaseHost: databaseUrl ? describeDatabaseHost(databaseUrl) : null
+  };
   if (!databaseUrl) {
     return setupPayload({
       code: 'MISSING_DATABASE_URL',
       title: apiCopy.runtime.missingDatabaseUrlTitle,
       message: apiCopy.runtime.missingDatabaseUrlMessage,
-      steps: [...apiCopy.runtime.missingDatabaseUrlSteps]
+      steps: [...apiCopy.runtime.missingDatabaseUrlSteps],
+      diagnostics
     });
   }
 
@@ -60,7 +69,8 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
       code: 'PLACEHOLDER_DATABASE_URL',
       title: apiCopy.runtime.placeholderDatabaseUrlTitle,
       message: apiCopy.runtime.placeholderDatabaseUrlMessage,
-      steps: [...apiCopy.runtime.placeholderDatabaseUrlSteps]
+      steps: [...apiCopy.runtime.placeholderDatabaseUrlSteps],
+      diagnostics
     });
   }
 
@@ -70,7 +80,8 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
       code: 'MISSING_SESSION_SECRET',
       title: apiCopy.runtime.missingSessionSecretTitle,
       message: apiCopy.runtime.missingSessionSecretMessage,
-      steps: [...apiCopy.runtime.missingSessionSecretSteps]
+      steps: [...apiCopy.runtime.missingSessionSecretSteps],
+      diagnostics
     });
   }
 
@@ -98,7 +109,8 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
         code: 'DATABASE_UNREACHABLE',
         title: apiCopy.runtime.dbUnreachableTitle,
         message: databaseSetupMessage(),
-        steps: [...apiCopy.runtime.dbUnreachableSteps]
+        steps: [...apiCopy.runtime.dbUnreachableSteps],
+        diagnostics
       });
     }
 
@@ -106,7 +118,8 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
       code: 'RUNTIME_ERROR',
       title: apiCopy.runtime.runtimeErrorTitle,
       message: apiCopy.runtime.runtimeErrorMessage,
-      steps: [...apiCopy.runtime.runtimeErrorSteps]
+      steps: [...apiCopy.runtime.runtimeErrorSteps],
+      diagnostics
     });
   }
 }

@@ -1,6 +1,6 @@
 export const DATABASE_URL_KEYS = [
-  'DATABASE_URL',
   'POSTGRES_PRISMA_URL',
+  'DATABASE_URL',
   'POSTGRES_URL',
   'POSTGRES_URL_NON_POOLING'
 ] as const;
@@ -22,4 +22,14 @@ export function resolveDatabaseUrl(): { url: string | null; source: DatabaseUrlS
 
 export function isPlaceholderDatabaseUrl(value: string): boolean {
   return DATABASE_URL_PLACEHOLDERS.some((pattern) => value.includes(pattern));
+}
+
+export function describeDatabaseHost(value: string): string {
+  try {
+    const parsed = new URL(value);
+    const port = parsed.port ? `:${parsed.port}` : '';
+    return `${parsed.hostname}${port}`;
+  } catch {
+    return 'INVALID_DATABASE_URL';
+  }
 }
