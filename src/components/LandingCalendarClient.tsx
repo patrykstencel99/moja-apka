@@ -7,8 +7,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { uiCopy } from '@/lib/copy';
 
 const DOTS_TOTAL = 365;
-const DIVE_FADE_DELAY_MS = 2400;
-const DIVE_NAV_DELAY_MS = 4200;
+const DIVE_FADE_DELAY_MS = 2500;
+const DIVE_NAV_DELAY_MS = 4700;
 
 type DivePoint = {
   x: number;
@@ -147,7 +147,8 @@ export function LandingCalendarClient() {
           <span className="landing-emphasis landing-emphasis--red">
             <span className="landing-emphasis-red-text">{uiCopy.landing.titleSecondaryRed}</span>
             <svg className="landing-red-loop" viewBox="0 0 300 90" preserveAspectRatio="none">
-              <path d="M12 52 C 24 15, 276 4, 286 43 C 295 80, 18 91, 12 52 Z" />
+              <path className="landing-red-loop-main" d="M12 52 C 24 15, 276 4, 286 43 C 295 80, 18 91, 12 52 Z" />
+              <path className="landing-red-loop-accent" d="M16 54 C 34 20, 268 10, 280 44 C 288 74, 28 84, 16 54 Z" />
             </svg>
           </span>
         </h2>

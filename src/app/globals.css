@@ -409,19 +409,19 @@ input[type='checkbox'] {
 }
 
 .landing-galaxy.is-diving .landing-inner {
-  opacity: 0.24;
-  transform: scale(0.985);
+  opacity: 0.14;
+  transform: scale(0.976);
   transition:
-    opacity 420ms ease,
-    transform 420ms ease;
+    opacity 2500ms cubic-bezier(0.16, 0.82, 0.2, 1),
+    transform 2500ms cubic-bezier(0.16, 0.82, 0.2, 1);
 }
 
 .landing-galaxy.is-diving .landing-cosmos-art {
-  filter: blur(1px);
-  opacity: 0.54;
+  filter: blur(2px);
+  opacity: 0.38;
   transition:
-    opacity 420ms ease,
-    filter 420ms ease;
+    opacity 2500ms cubic-bezier(0.16, 0.82, 0.2, 1),
+    filter 2500ms cubic-bezier(0.16, 0.82, 0.2, 1);
 }
 
 .landing-galaxy::before {
@@ -605,8 +605,9 @@ input[type='checkbox'] {
   z-index: 0;
 }
 
-.landing-red-loop path {
-  animation: landing-loop-draw 1100ms cubic-bezier(0.15, 0.86, 0.2, 1) 2550ms forwards;
+.landing-red-loop-main,
+.landing-red-loop-accent {
+  animation: landing-loop-draw 1200ms cubic-bezier(0.15, 0.86, 0.2, 1) 2550ms forwards;
   fill: none;
   opacity: 0;
   stroke: rgba(255, 122, 136, 0.92);
@@ -616,6 +617,12 @@ input[type='checkbox'] {
   stroke-linejoin: round;
   stroke-width: 3.1px;
   vector-effect: non-scaling-stroke;
+}
+
+.landing-red-loop-accent {
+  animation-delay: 2680ms;
+  stroke: rgba(255, 142, 156, 0.72);
+  stroke-width: 2.2px;
 }
 
 .landing-subtitle {
@@ -711,21 +718,13 @@ input[type='checkbox'] {
   top: var(--dive-y);
   transform: translate(-50%, -50%) scale(1);
   transform-origin: center;
-  transition:
-    transform 4200ms cubic-bezier(0.12, 0.9, 0.08, 1),
-    border-radius 4200ms cubic-bezier(0.12, 0.9, 0.08, 1),
-    box-shadow 4200ms cubic-bezier(0.12, 0.9, 0.08, 1);
+  will-change: left, top, transform, filter, box-shadow, opacity;
   width: var(--dive-size);
   z-index: 8;
 }
 
 .landing-dive.is-active {
-  opacity: 1;
-  border-radius: 0;
-  box-shadow:
-    0 0 0 1px rgba(13, 21, 17, 0.4),
-    0 0 120px rgba(102, 207, 147, 0.22);
-  transform: translate(-50%, -50%) scale(var(--dive-scale, 220));
+  animation: landing-dive-cinematic 4400ms cubic-bezier(0.12, 0.72, 0.1, 1) forwards;
 }
 
 .landing-transition-veil {
@@ -734,12 +733,11 @@ input[type='checkbox'] {
   opacity: 0;
   pointer-events: none;
   position: fixed;
-  transition: opacity 1300ms cubic-bezier(0.22, 0.85, 0.2, 1);
   z-index: 7;
 }
 
 .landing-transition-veil.is-visible {
-  opacity: 1;
+  animation: landing-veil-cinematic 2200ms cubic-bezier(0.18, 0.7, 0.04, 1) forwards;
 }
 
 @keyframes landing-fade-in {
@@ -817,6 +815,69 @@ input[type='checkbox'] {
   100% {
     opacity: 1;
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes landing-dive-cinematic {
+  0% {
+    opacity: 1;
+    left: var(--dive-x);
+    top: var(--dive-y);
+    filter: saturate(1);
+    box-shadow:
+      0 0 0 2px rgba(13, 21, 17, 0.92),
+      0 0 26px rgba(102, 207, 147, 0.46);
+    transform: translate(-50%, -50%) scale(1) rotate(0deg);
+  }
+  34% {
+    left: 50vw;
+    top: 50vh;
+    filter: saturate(1.06);
+    box-shadow:
+      0 0 0 2px rgba(13, 21, 17, 0.78),
+      0 0 78px rgba(122, 238, 173, 0.64);
+    transform: translate(-50%, -50%) scale(24) rotate(-0.3deg);
+  }
+  44% {
+    transform: translate(calc(-50% + 1px), calc(-50% - 1px)) scale(28) rotate(0.22deg);
+  }
+  50% {
+    transform: translate(calc(-50% - 1px), calc(-50% + 1px)) scale(31) rotate(-0.22deg);
+  }
+  58% {
+    filter: saturate(1.18);
+    box-shadow:
+      0 0 0 1px rgba(13, 21, 17, 0.6),
+      0 0 110px rgba(132, 244, 180, 0.74);
+    transform: translate(-50%, -50%) scale(36) rotate(0deg);
+  }
+  76% {
+    transform: translate(-50%, -50%) scale(44);
+  }
+  100% {
+    opacity: 1;
+    left: 50vw;
+    top: 50vh;
+    filter: saturate(1.22);
+    box-shadow:
+      0 0 0 1px rgba(13, 21, 17, 0.3),
+      0 0 180px rgba(132, 244, 180, 0.2);
+    transform: translate(-50%, -50%) scale(var(--dive-scale, 220)) rotate(0deg);
+  }
+}
+
+@keyframes landing-veil-cinematic {
+  0% {
+    opacity: 0;
+  }
+  62% {
+    opacity: 0.32;
+  }
+  84% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 1;
   }
 }
 
@@ -1928,11 +1989,11 @@ input[type='checkbox'] {
 }
 
 .auth-panel--from-landing {
-  animation: login-from-landing 1200ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
+  animation: login-from-landing 1600ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
 }
 
 .login-transition-backdrop {
-  animation: login-backdrop-fade 1250ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
+  animation: login-backdrop-fade 1700ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
   background: radial-gradient(circle at 50% 58%, rgba(20, 30, 26, 0.82) 0%, rgba(6, 8, 12, 0.98) 75%);
   inset: 0;
   pointer-events: none;

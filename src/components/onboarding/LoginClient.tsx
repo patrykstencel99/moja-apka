@@ -129,7 +129,7 @@ export function LoginClient() {
       return;
     }
 
-    router.push('/');
+    router.replace('/today');
     router.refresh();
   };
 
