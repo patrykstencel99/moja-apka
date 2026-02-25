@@ -33,6 +33,10 @@ export function middleware(request: NextRequest) {
 
   const hasSession = Boolean(request.cookies.get(SESSION_COOKIE)?.value);
 
+  if (hasSession && isPublicPath(pathname)) {
+    return NextResponse.redirect(new URL('/today', request.url));
+  }
+
   if (!hasSession && !isPublicPath(pathname)) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
