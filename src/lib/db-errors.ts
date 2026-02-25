@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 
+import { apiCopy } from '@/lib/copy';
+
 const CONNECTION_ERROR_CODES = new Set(['P1000', 'P1001', 'P1002', 'P1017']);
 
 export function isDatabaseConnectionError(error: unknown): boolean {
@@ -25,5 +27,5 @@ export function isDatabaseConnectionError(error: unknown): boolean {
 }
 
 export function databaseSetupMessage() {
-  return 'Brak polaczenia z baza danych. Ustaw poprawny DATABASE_URL i uruchom npm run prisma:push.';
+  return apiCopy.runtime.dbUnreachableMessage;
 }

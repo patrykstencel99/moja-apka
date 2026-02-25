@@ -131,15 +131,15 @@ function nextTestLine(report: ReportResponse | null) {
   const risk = topFactor(report, 'negative');
 
   if (!gain && !risk) {
-    return 'Eksperyment tygodnia: zrob jeden check-in dziennie i testuj jedna mala korekte poranka.';
+    return uiCopy.review.nextTestNoSignals;
   }
   if (gain && risk) {
-    return `Jutro ogranicz "${risk.factor}" i powtorz "${gain.factor}" w wersji minimalnej.`;
+    return uiCopy.review.nextTestBothTemplate.replace('{risk}', risk.factor).replace('{gain}', gain.factor);
   }
   if (risk) {
-    return `Jutro postaw jedna bariere na "${risk.factor}".`;
+    return uiCopy.review.nextTestRiskTemplate.replace('{risk}', risk.factor);
   }
-  return `Jutro utrwal "${gain?.factor}" jako staly krok poranny.`;
+  return uiCopy.review.nextTestGainTemplate.replace('{gain}', gain?.factor ?? '');
 }
 
 function mostFrequentTrigger(checkins: CheckIn[]) {
@@ -155,7 +155,7 @@ function mostFrequentTrigger(checkins: CheckIn[]) {
 
   const sorted = Array.from(counters.entries()).sort((a, b) => b[1] - a[1]);
   if (sorted.length === 0) {
-    return 'Brak dominujacego triggera. Zbieraj dalej dane binarne.';
+    return uiCopy.review.noFrequentTrigger;
   }
   return sorted[0][0];
 }
@@ -370,11 +370,23 @@ export function ReviewClient() {
           <div className="grid grid-2">
             <Card title={uiCopy.review.topGainTitle} subtitle={uiCopy.review.topGainSubtitle}>
               <p>{weeklyGain ? weeklyGain.factor : uiCopy.review.noTopGain}</p>
-              <small>{weeklyGain ? `Lag ${weeklyGain.lag} • pewnosc ${weeklyGain.confidence}%` : uiCopy.review.noCausalityHint}</small>
+              <small>
+                {weeklyGain
+                  ? uiCopy.review.lagConfidenceTemplate
+                      .replace('{lag}', String(weeklyGain.lag))
+                      .replace('{confidence}', String(weeklyGain.confidence))
+                  : uiCopy.review.noCausalityHint}
+              </small>
             </Card>
             <Card title={uiCopy.review.topRiskTitle} subtitle={uiCopy.review.topRiskSubtitle}>
               <p>{weeklyRisk ? weeklyRisk.factor : uiCopy.review.noTopRisk}</p>
-              <small>{weeklyRisk ? `Lag ${weeklyRisk.lag} • pewnosc ${weeklyRisk.confidence}%` : uiCopy.review.monitorCoreHint}</small>
+              <small>
+                {weeklyRisk
+                  ? uiCopy.review.lagConfidenceTemplate
+                      .replace('{lag}', String(weeklyRisk.lag))
+                      .replace('{confidence}', String(weeklyRisk.confidence))
+                  : uiCopy.review.monitorCoreHint}
+              </small>
             </Card>
           </div>
         )}
@@ -387,7 +399,7 @@ export function ReviewClient() {
       {period === 'week' && (
         <Card tone="elevated" title={uiCopy.review.weekCardTitle} subtitle={uiCopy.review.weekCardSubtitle}>
           <div className="review-trend">
-            <svg aria-label="Trend energii" viewBox="0 0 700 180">
+            <svg aria-label={uiCopy.review.trendAriaLabel} viewBox="0 0 700 180">
               <defs>
                 <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#1f6b43" stopOpacity="0.26" />

@@ -14,24 +14,24 @@ type Props = {
 
 const VISUAL_THEME: Record<VisualTheme, { label: string; src: string; alt: string }> = {
   cockpit: {
-    label: 'Cockpit',
+    label: 'Panel',
     src: '/visuals/cockpit-minimal.svg',
-    alt: 'Minimal cockpit inspired background'
+    alt: 'Minimalne tlo panelowe'
   },
   topography: {
     label: 'Topografia',
     src: '/visuals/topography-map.svg',
-    alt: 'Topography inspired background'
+    alt: 'Tlo topograficzne'
   },
   radar: {
     label: 'Radar',
     src: '/visuals/radar-echo.svg',
-    alt: 'Radar rings inspired background'
+    alt: 'Tlo radarowe'
   },
   material: {
-    label: 'Material',
+    label: 'Tekstura',
     src: '/visuals/premium-material.svg',
-    alt: 'Premium paper and metal inspired background'
+    alt: 'Tlo materialowe'
   }
 };
 
@@ -71,7 +71,7 @@ export function DecisionVisualStage({ mood, energy, signals }: Props) {
 
   return (
     <section className="visual-shell">
-      <div className="visual-switch" role="tablist" aria-label="Visual themes">
+      <div className="visual-switch" role="tablist" aria-label="Motywy wizualne">
         {(Object.keys(VISUAL_THEME) as VisualTheme[]).map((key) => (
           <button
             aria-selected={theme === key}
@@ -101,10 +101,10 @@ export function DecisionVisualStage({ mood, energy, signals }: Props) {
 
         <div className="visual-stage__hud">
           <p>
-            <strong>Precision Layer</strong>
+            <strong>Warstwa decyzji</strong>
           </p>
-          <small>Risk: {level}</small>
-          <small>Mood {mood} / Energy {energy}</small>
+          <small>Ryzyko: {level}</small>
+          <small>Nastroj {mood} / Energia {energy}</small>
         </div>
 
         <div className="visual-stage__signal-row">

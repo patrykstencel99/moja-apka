@@ -17,23 +17,23 @@ export type GeneratedNextMove = {
 
 const FALLBACK_MOVES: Array<Omit<GeneratedNextMove, 'id'>> = [
   {
-    title: 'Zamknij dzien jednym rytuałem wyjscia',
-    why: 'Stabilny koniec dnia najczesciej poprawia energie nastepnego poranka.',
-    minimalVariant: '10%: 3 min bez ekranu przed snem i plan 1 priorytetu na jutro.',
+    title: 'Zamknij dzien prostym rytualem konca pracy',
+    why: 'Spokojny koniec dnia czesto poprawia energie kolejnego poranka.',
+    minimalVariant: 'Wersja minimalna: 3 minuty bez ekranu i 1 priorytet na jutro.',
     confidence: 52,
     lag: 1
   },
   {
-    title: 'Utnij jeden trigger rozproszenia',
-    why: 'Najmniejsza korekta w triggerze zwykle daje najwiekszy zwrot w jakosci dnia.',
-    minimalVariant: '10%: wycisz 1 kanał notyfikacji na 2 godziny.',
+    title: 'Odetnij jedno glowne rozproszenie',
+    why: 'Mala korekta w srodowisku czesto daje duzy efekt w jakosci dnia.',
+    minimalVariant: 'Wersja minimalna: wycisz 1 kanal powiadomien na 2 godziny.',
     confidence: 49,
     lag: 0
   },
   {
-    title: 'Powtorz jeden stabilizator jutro rano',
-    why: 'Powtarzalnosc stabilizatora wzmacnia przewidywalnosc nastroju i energii.',
-    minimalVariant: '10%: 5 minut rutyny startowej bez telefonu.',
+    title: 'Powtorz jeden stabilizujacy ruch rano',
+    why: 'Powtarzalnosc buduje stabilnosc nastroju i energii.',
+    minimalVariant: 'Wersja minimalna: 5 minut porannej rutyny bez telefonu.',
     confidence: 56,
     lag: 1
   }
@@ -69,9 +69,9 @@ export function buildNextMove(params: {
   if (mood <= 4 || energy <= 4) {
     return {
       id: makeId(),
-      title: 'Zabezpiecz jutro przez regeneracje krytyczną',
-      why: 'Dzisiejszy niski stan sugeruje, że najmniejsza poprawa rytmu da najwiekszy zwrot jutro.',
-      minimalVariant: '10%: ustaw godzinę odcięcia pracy i bez kofeiny po 15:00.',
+      title: 'Zabezpiecz jutro przez regeneracje',
+      why: 'Przy nizszym stanie najszybciej dziala prosty reset rytmu dnia.',
+      minimalVariant: 'Wersja minimalna: ustal godzine zakonczenia pracy i bez kofeiny po 15:00.',
       confidence: 64,
       lag: 1
     };
@@ -82,9 +82,9 @@ export function buildNextMove(params: {
 
     return {
       id: makeId(),
-      title: `Postaw barierę na sygnał: ${source.name}`,
-      why: 'Ten sygnał najpewniej wzmacnia petle reaktywnosci i obniża jakosc kolejnego dnia.',
-      minimalVariant: '10%: dodaj jedna regułę if-then, ktora odcina trigger.',
+      title: `Postaw bariere na sygnal: ${source.name}`,
+      why: 'Ten sygnal najpewniej pcha dzien w gorsza strone.',
+      minimalVariant: 'Wersja minimalna: dodaj jedna prosta regule, ktora odcina ten wyzwalacz.',
       confidence: 61,
       lag: 0
     };
@@ -96,8 +96,8 @@ export function buildNextMove(params: {
     return {
       id: makeId(),
       title: `Powtorz stabilizator: ${source.name}`,
-      why: 'Powielanie stabilizatora zwykle buduje ciaglosc nastroju i energii.',
-      minimalVariant: '10%: zaplanuj ten sygnał jako pierwszy blok jutra.',
+      why: 'Powtarzanie tego sygnalu zwykle wzmacnia dobry rytm dnia.',
+      minimalVariant: 'Wersja minimalna: zaplanuj ten sygnal jako pierwszy blok jutra.',
       confidence: 58,
       lag: 1
     };

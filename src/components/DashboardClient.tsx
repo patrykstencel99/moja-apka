@@ -289,7 +289,7 @@ export function DashboardClient() {
       }
       const result = await flushQueuedCheckIns();
       if (result.sent > 0) {
-        setSyncInfo(`Offline queue zsynchronizowana: ${result.sent} wpisow.`);
+        setSyncInfo(`Wpisy offline zsynchronizowane: ${result.sent} wpisow.`);
         await load();
       }
     };
@@ -691,23 +691,23 @@ export function DashboardClient() {
         )}
 
         <label className="stack-sm">
-          Fakt / trigger / decyzja
+          Sytuacja / wyzwalacz / decyzja
           <input
             onChange={(event) => setJournal(event.target.value)}
-            placeholder="np. Trigger: pozna kawa. Decyzja: bez kofeiny po 15:00."
+            placeholder="np. Sytuacja: pozna kawa. Decyzja: bez kofeiny po 15:00."
             value={journal}
           />
           <small>Ultra krotko. Fakty i decyzja, bez narracji.</small>
         </label>
 
         <Button block onClick={submitCheckIn} size="lg" variant="primary">
-          Zapisz i pokaz Next Move
+          Zapisz i pokaz kolejny krok
         </Button>
       </Card>
 
       <Card
         tone="strong"
-        title="Decide: Next Move na jutro"
+        title="Kolejny krok na jutro"
         subtitle="Jedna decyzja. Jedna korekta. Jeden eksperyment."
       >
         <p className="decision-title">{currentDecision.title}</p>
@@ -770,16 +770,16 @@ export function DashboardClient() {
         {verdictVisible && (
           <div className={`daily-verdict daily-verdict--${verdict.level}`}>
             <p>{verdict.line}</p>
-            <small>One move: {currentDecision.title.replace(/^Jutro:\s*/, '')}</small>
-            <small>Minimal variant: {currentDecision.minimal}</small>
+            <small>Jeden ruch: {currentDecision.title.replace(/^Jutro:\s*/, '')}</small>
+            <small>Wersja minimalna: {currentDecision.minimal}</small>
           </div>
         )}
       </Card>
 
       <Card
         tone="elevated"
-        title="Review: historia dnia"
-        subtitle="Progressive disclosure. Tylko podglad, bez dodatkowych akcji."
+        title="Przeglad: historia dnia"
+        subtitle="Podglad wpisow bez dodatkowych akcji."
       >
         <details>
           <summary>Zobacz historie check-inow</summary>
@@ -796,7 +796,7 @@ export function DashboardClient() {
                       <strong>
                         {new Date(entry.createdAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
                       </strong>
-                      {' • '}mood {entry.mood} • energy {entry.energy}
+                      {' • '}nastroj {entry.mood} • energia {entry.energy}
                     </p>
                     {entry.journal && <small>{entry.journal}</small>}
                   </div>
@@ -808,7 +808,7 @@ export function DashboardClient() {
         <div className="review-cta-row">
           <small>Nie optymalizujesz dnia. Stabilizujesz tydzien.</small>
           <Link className="review-link" href="/review">
-            Otworz Review 2x / 5x / 10x
+            Otworz Przeglad
           </Link>
         </div>
       </Card>

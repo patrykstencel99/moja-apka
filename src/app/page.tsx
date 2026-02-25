@@ -1,5 +1,9 @@
-import { redirect } from 'next/navigation';
+import { LandingCalendarClient } from '@/components/LandingCalendarClient';
 
 export default function HomePage() {
-  redirect('/today');
+  return (
+    <main className="landing-shell">
+      <LandingCalendarClient />
+    </main>
+  );
 }

@@ -1,5 +1,6 @@
 import { ActivityType } from '@prisma/client';
 
+import { apiCopy } from '@/lib/copy';
 import { plusDays } from '@/lib/date';
 import type { Insight, MacroPattern } from '@/types/domain';
 
@@ -289,7 +290,7 @@ export function buildInsightsReport(params: {
       to,
       uniqueDays,
       insufficientData: true,
-      message: 'Za malo danych. Wprowadzaj wpisy przez minimum 7 dni, aby zobaczyc insighty.',
+      message: apiCopy.reports.insufficientDataMessage,
       positive: [] as Insight[],
       negative: [] as Insight[],
       macroPatterns: [] as MacroPattern[]
@@ -402,7 +403,7 @@ export function buildInsightsReport(params: {
     to,
     uniqueDays,
     insufficientData: false,
-    message: 'Wnioski sa hipotezami statystycznymi, nie dowodem przyczynowosci.',
+    message: apiCopy.reports.hypothesisMessage,
     positive,
     negative,
     macroPatterns: buildMacroPatterns(checkins)

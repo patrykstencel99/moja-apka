@@ -32,7 +32,10 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0]?.message ?? apiCopy.auth.invalidRegisterData }, { status: 400 });
+      const firstIssue = parsed.error.issues[0];
+      const errorMessage =
+        firstIssue?.message === apiCopy.auth.passwordsMismatch ? apiCopy.auth.passwordsMismatch : apiCopy.auth.invalidRegisterData;
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
     const email = parsed.data.email.trim().toLowerCase();

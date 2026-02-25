@@ -17,7 +17,7 @@ const CATEGORY_ICON: Record<string, ActivityIconKey> = {
 
 const SYSTEM_DESCRIPTION: Record<string, string> = {
   'Stabilna energia': 'System pod stabilna energie i mniejsza zmiennosc dnia.',
-  'Gleboka praca': 'System pod regularne bloki deep work i mniejszy koszt rozproszen.',
+  'Gleboka praca': 'System pod regularne bloki glebokiej pracy i mniejszy koszt rozproszen.',
   'Sen bez tarcia': 'System pod latwiejsze zasypianie i wyzsza regeneracje.'
 };
 

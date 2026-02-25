@@ -14,6 +14,16 @@ type Props = {
   system: StarterSystem;
 };
 
+function cadenceLabel(value: 'RANO' | 'DZIEN' | 'WIECZOR') {
+  if (value === 'RANO') {
+    return uiCopy.systemDetail.cadenceMorning;
+  }
+  if (value === 'WIECZOR') {
+    return uiCopy.systemDetail.cadenceEvening;
+  }
+  return uiCopy.systemDetail.cadenceDay;
+}
+
 export function SystemDetailClient({ system }: Props) {
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +72,7 @@ export function SystemDetailClient({ system }: Props) {
       <Card tone="elevated" title={uiCopy.systemDetail.coreTitle} subtitle={uiCopy.systemDetail.coreSubtitle}>
         <div className="stack">
           {system.coreSignals.map((signal) => (
-            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${signal.cadence}`} title={signal.name}>
+            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${cadenceLabel(signal.cadence)}`} title={signal.name}>
               <small>{signal.definition}</small>
             </Card>
           ))}
@@ -72,7 +82,7 @@ export function SystemDetailClient({ system }: Props) {
       <Card tone="default" title={uiCopy.systemDetail.advancedTitle} subtitle={uiCopy.systemDetail.advancedSubtitle}>
         <div className="stack">
           {system.advancedSignals.map((signal) => (
-            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${signal.cadence}`} title={signal.name}>
+            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${cadenceLabel(signal.cadence)}`} title={signal.name}>
               <small>{signal.definition}</small>
             </Card>
           ))}

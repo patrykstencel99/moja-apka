@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
@@ -56,6 +56,16 @@ type GamificationStatus = {
   avgEntriesPerDay: number;
 };
 
+type YearDay = {
+  localDate: string;
+};
+
+type YearMonthRow = {
+  key: string;
+  label: string;
+  days: YearDay[];
+};
+
 const SKIP_REASON_OPTIONS: Array<{ id: NextMoveRecord['skipReason']; label: string }> = [
   { id: 'brak-czasu', label: uiCopy.today.skipReasons.noTime },
   { id: 'zly-moment', label: uiCopy.today.skipReasons.outsideControl },
@@ -96,6 +106,34 @@ function todayLocalDate() {
   }).format(new Date());
 }
 
+function parseLocalDate(localDate: string) {
+  const [year, month, day] = localDate.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+}
+
+function isLocalDateString(value: string | null) {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+function buildYearRows(year: number): YearMonthRow[] {
+  return Array.from({ length: 12 }, (_, monthIndex) => {
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const monthDate = new Date(year, monthIndex, 1);
+    const label = monthDate.toLocaleDateString('pl-PL', { month: 'short' });
+    const days = Array.from({ length: daysInMonth }, (_, dayOffset) => {
+      const day = dayOffset + 1;
+      const localDate = `${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      return { localDate };
+    });
+
+    return {
+      key: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+      label,
+      days
+    };
+  });
+}
+
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString('pl-PL', {
     hour: '2-digit',
@@ -122,9 +160,11 @@ function readProfilePayload(data: unknown): UserProfile | null {
 
 export function TodayClient() {
   const router = useRouter();
+  const pathname = usePathname();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
+  const [yearCheckins, setYearCheckins] = useState<CheckIn[]>([]);
   const [gamification, setGamification] = useState<GamificationStatus | null>(null);
 
   const [values, setValues] = useState<Record<string, number | boolean>>({});
@@ -152,6 +192,16 @@ export function TodayClient() {
 
   const seedTriedInBackground = useRef(false);
   const localDate = useMemo(() => todayLocalDate(), []);
+  const currentYear = useMemo(() => Number(localDate.slice(0, 4)), [localDate]);
+  const yearRows = useMemo(() => buildYearRows(currentYear), [currentYear]);
+  const yearRange = useMemo(
+    () => ({
+      from: `${currentYear}-01-01`,
+      to: `${currentYear}-12-31`
+    }),
+    [currentYear]
+  );
+  const [selectedDay, setSelectedDay] = useState(localDate);
 
   const updateValuesFromActivities = useCallback((nextActivities: Activity[]) => {
     setValues((prev) => {
@@ -257,19 +307,20 @@ export function TodayClient() {
   const load = useCallback(async () => {
     setError(null);
 
-    const [profileRes, activitiesRes, checkinsRes, gamRes] = await Promise.all([
+    const [profileRes, activitiesRes, checkinsRes, yearRes, gamRes] = await Promise.all([
       fetch('/api/user/profile', { cache: 'no-store' }),
       fetch('/api/setup/activities', { cache: 'no-store' }),
       fetch(`/api/checkins?from=${localDate}&to=${localDate}`, { cache: 'no-store' }),
+      fetch(`/api/checkins?from=${yearRange.from}&to=${yearRange.to}`, { cache: 'no-store' }),
       fetch('/api/gamification/status', { cache: 'no-store' })
     ]);
 
-    if ([profileRes, activitiesRes, checkinsRes, gamRes].some((response) => response.status === 401)) {
+    if ([profileRes, activitiesRes, checkinsRes, yearRes, gamRes].some((response) => response.status === 401)) {
       await handleUnauthorized();
       return;
     }
 
-    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !gamRes.ok) {
+    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !yearRes.ok || !gamRes.ok) {
       setError(uiCopy.today.daySyncError);
       return;
     }
@@ -277,6 +328,7 @@ export function TodayClient() {
     const profileData = readProfilePayload(await profileRes.json().catch(() => null));
     const activitiesData = (await activitiesRes.json()) as { activities: Activity[] };
     const checkinsData = (await checkinsRes.json()) as CheckInsResponse;
+    const yearData = (await yearRes.json()) as CheckInsResponse;
     const gamData = (await gamRes.json()) as GamificationStatus;
 
     if (profileData) {
@@ -287,13 +339,14 @@ export function TodayClient() {
 
     setActivities(activitiesData.activities);
     setCheckins(checkinsData.checkIns);
+    setYearCheckins(yearData.checkIns);
     setGamification(gamData);
     updateValuesFromActivities(activitiesData.activities);
 
     const shouldShowWelcome =
       (profileData ? !profileData.onboardingComplete : false) || activitiesData.activities.length === 0;
     setWelcomeOpen(shouldShowWelcome && !welcomeDismissed);
-  }, [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed]);
+  }, [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed, yearRange.from, yearRange.to]);
 
   useEffect(() => {
     setActiveMove(readActiveNextMove());
@@ -308,7 +361,7 @@ export function TodayClient() {
 
       const result = await flushQueuedCheckIns();
       if (result.sent > 0) {
-        setSyncInfo(`Offline queue zsynchronizowana: ${result.sent} wpisow.`);
+        setSyncInfo(uiCopy.today.syncInfoTemplate.replace('{count}', String(result.sent)));
         await load();
       }
     };
@@ -331,6 +384,24 @@ export function TodayClient() {
     seedTriedInBackground.current = true;
     void seedSignals(profile.focus, profile.checkinPreference, true);
   }, [activities.length, profile, seedSignals]);
+
+  useEffect(() => {
+    const syncSelectedDayFromLocation = () => {
+      const params = new URLSearchParams(window.location.search);
+      const dayParam = params.get('day');
+
+      if (typeof dayParam === 'string' && isLocalDateString(dayParam) && dayParam.startsWith(`${currentYear}-`)) {
+        setSelectedDay(dayParam);
+        return;
+      }
+
+      setSelectedDay(localDate);
+    };
+
+    syncSelectedDayFromLocation();
+    window.addEventListener('popstate', syncSelectedDayFromLocation);
+    return () => window.removeEventListener('popstate', syncSelectedDayFromLocation);
+  }, [currentYear, localDate]);
 
   const quickSignals = useMemo(() => {
     if (!profile || activities.length === 0) {
@@ -365,6 +436,64 @@ export function TodayClient() {
         valenceHint: activity.valenceHint
       })),
     [quickSignals, values]
+  );
+
+  const dayCountByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of yearCheckins) {
+      counts.set(entry.localDate, (counts.get(entry.localDate) ?? 0) + 1);
+    }
+    return counts;
+  }, [yearCheckins]);
+
+  const selectedDayEntries = useMemo(
+    () =>
+      yearCheckins
+        .filter((entry) => entry.localDate === selectedDay)
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+    [selectedDay, yearCheckins]
+  );
+
+  const selectedDayMoodAvg = useMemo(() => {
+    if (selectedDayEntries.length === 0) {
+      return 0;
+    }
+    const sum = selectedDayEntries.reduce((acc, entry) => acc + entry.mood, 0);
+    return Number((sum / selectedDayEntries.length).toFixed(1));
+  }, [selectedDayEntries]);
+
+  const selectedDayEnergyAvg = useMemo(() => {
+    if (selectedDayEntries.length === 0) {
+      return 0;
+    }
+    const sum = selectedDayEntries.reduce((acc, entry) => acc + entry.energy, 0);
+    return Number((sum / selectedDayEntries.length).toFixed(1));
+  }, [selectedDayEntries]);
+
+  const formattedSelectedDay = useMemo(() => {
+    return parseLocalDate(selectedDay).toLocaleDateString('pl-PL', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  }, [selectedDay]);
+
+  const selectCalendarDay = useCallback(
+    (day: string) => {
+      setSelectedDay(day);
+
+      const nextParams = new URLSearchParams(window.location.search);
+      if (day === localDate) {
+        nextParams.delete('day');
+      } else {
+        nextParams.set('day', day);
+      }
+
+      const query = nextParams.toString();
+      window.history.replaceState(null, '', query ? `${pathname}?${query}` : pathname);
+    },
+    [localDate, pathname]
   );
 
   const submitCheckIn = async () => {
@@ -404,17 +533,17 @@ export function TodayClient() {
         payload
       });
 
-      setCheckins((prev) => [
-        ...prev,
-        {
-          id: `offline-${clientEventId}`,
-          localDate,
-          mood,
-          energy,
-          journal,
-          createdAt: new Date().toISOString()
-        }
-      ]);
+      const offlineEntry: CheckIn = {
+        id: `offline-${clientEventId}`,
+        localDate,
+        mood,
+        energy,
+        journal,
+        createdAt: new Date().toISOString()
+      };
+
+      setCheckins((prev) => [...prev, offlineEntry]);
+      setYearCheckins((prev) => [...prev, offlineEntry]);
       setInfo(uiCopy.today.offlineSavedInfo);
     } else {
       const response = await fetch('/api/checkins', {
@@ -618,6 +747,86 @@ export function TodayClient() {
         </Card>
       )}
 
+      <section className="year-focus">
+        <div aria-hidden className="year-focus-art">
+          <span className="orbit-ring orbit-ring--outer" />
+          <span className="orbit-ring orbit-ring--inner" />
+          <span className="orbit-planet" />
+          <span className="orbit-star orbit-star--a" />
+          <span className="orbit-star orbit-star--b" />
+          <span className="orbit-star orbit-star--c" />
+        </div>
+
+        <header className="year-focus-header">
+          <span className="eyebrow">{uiCopy.today.yearView.eyebrow}</span>
+          <h2 className="year-focus-title">{uiCopy.today.yearView.title}</h2>
+          <p className="year-focus-subtitle">{uiCopy.today.yearView.subtitle}</p>
+        </header>
+
+        <div className="year-focus-legend">
+          <span>{uiCopy.today.yearView.legendNone}</span>
+          <span>{uiCopy.today.yearView.legendSingle}</span>
+          <span>{uiCopy.today.yearView.legendDouble}</span>
+        </div>
+
+        <div className="year-grid-shell">
+          {yearRows.map((row) => (
+            <div className="year-row" key={row.key}>
+              <span className="year-row-label">{row.label}</span>
+              <div className="year-row-days">
+                {row.days.map((day) => {
+                  const checkInCount = dayCountByDate.get(day.localDate) ?? 0;
+                  const tone = checkInCount >= 2 ? 'double' : checkInCount === 1 ? 'single' : 'none';
+                  const isActive = selectedDay === day.localDate;
+
+                  return (
+                    <button
+                      aria-label={uiCopy.today.yearView.dayAriaLabelTemplate
+                        .replace('{date}', day.localDate)
+                        .replace('{count}', String(checkInCount))}
+                      className={['year-dot', `year-dot--${tone}`, isActive ? 'is-active' : ''].join(' ')}
+                      key={day.localDate}
+                      onClick={() => selectCalendarDay(day.localDate)}
+                      type="button"
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <Card tone="elevated" title={uiCopy.today.yearView.dayTitle} subtitle={formattedSelectedDay}>
+        <div className="grid grid-3 compact-grid">
+          <StatTile label={uiCopy.today.yearView.dayStats.entries} value={selectedDayEntries.length} />
+          <StatTile
+            label={uiCopy.today.yearView.dayStats.mood}
+            value={selectedDayEntries.length === 0 ? '-' : selectedDayMoodAvg}
+          />
+          <StatTile
+            label={uiCopy.today.yearView.dayStats.energy}
+            value={selectedDayEntries.length === 0 ? '-' : selectedDayEnergyAvg}
+          />
+        </div>
+
+        {selectedDayEntries.length === 0 ? (
+          <div className="empty-state">{uiCopy.today.yearView.dayEmpty}</div>
+        ) : (
+          <div className="timeline">
+            {selectedDayEntries.map((entry) => (
+              <div className="timeline-item" key={entry.id}>
+                <p>
+                  <strong>{formatTime(entry.createdAt)}</strong> - {uiCopy.today.history.moodShort} {entry.mood} -{' '}
+                  {uiCopy.today.history.energyShort} {entry.energy}
+                </p>
+                {entry.journal && <small>{entry.journal}</small>}
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {seedStatus === 'failed' && (
         <Banner tone="info" title={uiCopy.today.seedFailed.title}>
           {uiCopy.today.seedFailed.body}
@@ -652,10 +861,14 @@ export function TodayClient() {
           <StatTile
             label={uiCopy.today.dayStatus.streakLabel}
             value={gamification?.currentStreak ?? 0}
-            hint={`Najlepsza ${gamification?.bestStreak ?? 0}`}
+            hint={uiCopy.today.dayStatus.bestStreakHintTemplate.replace('{count}', String(gamification?.bestStreak ?? 0))}
             trend={(gamification?.currentStreak ?? 0) >= 7 ? 'up' : 'neutral'}
           />
-          <StatTile label={uiCopy.today.dayStatus.levelLabel} value={gamification?.level ?? 1} hint={`XP ${gamification?.totalXp ?? 0}`} />
+          <StatTile
+            label={uiCopy.today.dayStatus.levelLabel}
+            value={gamification?.level ?? 1}
+            hint={uiCopy.today.dayStatus.xpHintTemplate.replace('{xp}', String(gamification?.totalXp ?? 0))}
+          />
         </div>
       </Card>
 
@@ -785,7 +998,8 @@ export function TodayClient() {
               .map((entry) => (
                 <div className="timeline-item" key={entry.id}>
                   <p>
-                    <strong>{formatTime(entry.createdAt)}</strong> - mood {entry.mood} - energy {entry.energy}
+                    <strong>{formatTime(entry.createdAt)}</strong> - {uiCopy.today.history.moodShort} {entry.mood} -{' '}
+                    {uiCopy.today.history.energyShort} {entry.energy}
                   </p>
                   {entry.journal && <small>{entry.journal}</small>}
                 </div>

@@ -59,8 +59,8 @@ export function SystemTuneClient({ system }: Props) {
                     }
                     value={signal.type}
                   >
-                    <option value="BOOLEAN">Tak/Nie</option>
-                    <option value="NUMERIC_0_10">Skala 0-10</option>
+                    <option value="BOOLEAN">{uiCopy.systemTune.typeBooleanOption}</option>
+                    <option value="NUMERIC_0_10">{uiCopy.systemTune.typeNumericOption}</option>
                   </select>
                 </label>
 

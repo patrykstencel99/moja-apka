@@ -183,12 +183,12 @@ export function SystemsClient() {
               <Card
                 className="card-stagger"
                 key={system.id}
-                subtitle={`Podst ${system.coreSignals.length} • Rozs ${system.advancedSignals.length}`}
+                subtitle={`${uiCopy.systems.metricsCoreShort} ${system.coreSignals.length} • ${uiCopy.systems.metricsAdvancedShort} ${system.advancedSignals.length}`}
                 title={system.name}
               >
                 <div className="system-hero">
                   <Image
-                    alt={`${system.name} visual`}
+                    alt={`${system.name} - ${uiCopy.systems.visualAltSuffix}`}
                     height={220}
                     sizes="(max-width: 1020px) 100vw, 33vw"
                     src={SYSTEM_VISUAL[system.id] ?? '/visuals/topography-map.svg'}
@@ -219,11 +219,16 @@ export function SystemsClient() {
               key={system.id}
               subtitle={system.outcome}
               title={system.name}
-              actions={<span className="metric-badge">Podst {system.coreSignals.length} • Rozs {system.advancedSignals.length}</span>}
+              actions={
+                <span className="metric-badge">
+                  {uiCopy.systems.metricsCoreShort} {system.coreSignals.length} • {uiCopy.systems.metricsAdvancedShort}{' '}
+                  {system.advancedSignals.length}
+                </span>
+              }
             >
               <div className="system-hero">
                 <Image
-                  alt={`${system.name} visual`}
+                  alt={`${system.name} - ${uiCopy.systems.visualAltSuffix}`}
                   height={220}
                   sizes="(max-width: 1020px) 100vw, 33vw"
                   src={SYSTEM_VISUAL[system.id] ?? '/visuals/topography-map.svg'}
@@ -237,7 +242,10 @@ export function SystemsClient() {
                     {system.coreSignals.map((signal) => (
                       <li key={`${system.id}-${signal.name}`}>
                         <div>
-                          <strong>{signal.name}</strong> <small>({signal.type === 'BOOLEAN' ? 'tak/nie' : '0-10'})</small>
+                          <strong>{signal.name}</strong>{' '}
+                          <small>
+                            ({signal.type === 'BOOLEAN' ? uiCopy.systems.signalTypeBooleanShort : uiCopy.systems.signalTypeNumericShort})
+                          </small>
                         </div>
                         <small>{signal.why}</small>
                         <small>{cadenceLabel(signal.cadence)} • {signal.definition}</small>
@@ -252,7 +260,10 @@ export function SystemsClient() {
                     {system.advancedSignals.map((signal) => (
                       <li key={`${system.id}-adv-${signal.name}`}>
                         <div>
-                          <strong>{signal.name}</strong> <small>({signal.type === 'BOOLEAN' ? 'tak/nie' : '0-10'})</small>
+                          <strong>{signal.name}</strong>{' '}
+                          <small>
+                            ({signal.type === 'BOOLEAN' ? uiCopy.systems.signalTypeBooleanShort : uiCopy.systems.signalTypeNumericShort})
+                          </small>
                         </div>
                         <small>{signal.why}</small>
                         <small>{cadenceLabel(signal.cadence)} • {signal.definition}</small>
