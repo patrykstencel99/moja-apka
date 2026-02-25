@@ -408,6 +408,22 @@ input[type='checkbox'] {
   position: relative;
 }
 
+.landing-galaxy.is-diving .landing-inner {
+  opacity: 0.24;
+  transform: scale(0.985);
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+}
+
+.landing-galaxy.is-diving .landing-cosmos-art {
+  filter: blur(1px);
+  opacity: 0.54;
+  transition:
+    opacity 420ms ease,
+    filter 420ms ease;
+}
+
 .landing-galaxy::before {
   background:
     repeating-radial-gradient(
@@ -501,6 +517,7 @@ input[type='checkbox'] {
 }
 
 .landing-inner {
+  animation: landing-fade-in 1400ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
   align-content: center;
   display: grid;
   gap: var(--space-4);
@@ -513,6 +530,7 @@ input[type='checkbox'] {
 }
 
 .landing-eyebrow {
+  animation: landing-fade-up 1100ms cubic-bezier(0.16, 0.84, 0.2, 1) 120ms both;
   color: rgba(232, 238, 248, 0.74);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
@@ -522,7 +540,9 @@ input[type='checkbox'] {
 }
 
 .landing-title {
-  animation: float-title 4.4s ease-in-out infinite;
+  animation:
+    landing-fade-up 1250ms cubic-bezier(0.16, 0.84, 0.2, 1) 220ms both,
+    float-title 4.4s ease-in-out 1700ms infinite;
   color: #f8fbff;
   font-size: clamp(2.1rem, 6.6vw, 5.4rem);
   line-height: 0.98;
@@ -532,6 +552,7 @@ input[type='checkbox'] {
 }
 
 .landing-subtitle {
+  animation: landing-fade-up 1200ms cubic-bezier(0.16, 0.84, 0.2, 1) 380ms both;
   color: rgba(219, 225, 236, 0.92);
   font-size: clamp(0.95rem, 1.8vw, 1.08rem);
   margin: 0 auto;
@@ -539,17 +560,39 @@ input[type='checkbox'] {
 }
 
 .landing-grid-wrap {
+  animation: landing-fade-up 1400ms cubic-bezier(0.16, 0.84, 0.2, 1) 520ms both;
   backdrop-filter: blur(3px);
   background: rgba(6, 10, 16, 0.52);
   border: 1px solid rgba(255, 255, 255, 0.17);
   border-radius: var(--radius-lg);
+  overflow: hidden;
   padding: clamp(0.8rem, 2vw, 1.3rem);
+  position: relative;
+}
+
+.landing-grid-wrap::after {
+  animation: landing-sweep 2400ms cubic-bezier(0.18, 0.88, 0.2, 1) 900ms both;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.17) 42%,
+    rgba(255, 255, 255, 0.04) 56%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  content: '';
+  inset: -24px -32px;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-120%);
+  z-index: 0;
 }
 
 .landing-grid {
   display: grid;
   gap: 4px;
   grid-template-columns: repeat(73, minmax(0, 1fr));
+  position: relative;
+  z-index: 1;
 }
 
 .landing-dot {
@@ -559,12 +602,18 @@ input[type='checkbox'] {
   border-radius: 2px;
   cursor: pointer;
   min-height: 8px;
+  opacity: 0;
   padding: 0;
+  transform: scale(0.35);
   transition:
     transform var(--duration-fast) var(--easing-standard),
     border-color var(--duration-fast) var(--easing-standard),
     box-shadow var(--duration-fast) var(--easing-standard),
     background var(--duration-fast) var(--easing-standard);
+}
+
+.landing-grid.is-revealed .landing-dot {
+  animation: landing-dot-reveal 920ms cubic-bezier(0.2, 0.85, 0.2, 1) var(--dot-delay, 0ms) both;
 }
 
 .landing-dot:hover {
@@ -573,9 +622,121 @@ input[type='checkbox'] {
 }
 
 .landing-dot.is-selected {
+  opacity: 1;
   background: #1f7a46;
   border-color: rgba(178, 246, 202, 0.95);
   box-shadow: 0 0 0 2px rgba(15, 23, 20, 0.84);
+  transform: scale(1);
+}
+
+.landing-dive {
+  background: radial-gradient(circle at 34% 32%, #66cf93 0%, #2c9256 42%, #0f3622 100%);
+  border: 1px solid rgba(187, 246, 209, 0.95);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px rgba(13, 21, 17, 0.92),
+    0 0 34px rgba(102, 207, 147, 0.5);
+  height: var(--dive-size);
+  left: var(--dive-x);
+  opacity: 1;
+  pointer-events: none;
+  position: fixed;
+  top: var(--dive-y);
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center;
+  transition:
+    transform 900ms cubic-bezier(0.12, 0.86, 0.1, 1),
+    border-radius 900ms cubic-bezier(0.12, 0.86, 0.1, 1),
+    opacity 260ms ease-out;
+  width: var(--dive-size);
+  z-index: 8;
+}
+
+.landing-dive.is-expanding {
+  border-radius: 28px;
+  transform: translate(-50%, -50%) scale(260);
+}
+
+.landing-dive.is-fading {
+  opacity: 0;
+}
+
+.landing-transition-veil {
+  background: radial-gradient(circle at 50% 50%, rgba(10, 17, 14, 0) 0%, rgba(3, 5, 8, 0.96) 70%);
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  transition: opacity 320ms ease;
+  z-index: 7;
+}
+
+.landing-transition-veil.is-visible {
+  opacity: 1;
+}
+
+@keyframes landing-fade-in {
+  from {
+    filter: saturate(0.8);
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    filter: saturate(1);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-dot-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.22);
+  }
+  56% {
+    opacity: 0.78;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes landing-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(-120%);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(120%);
+  }
+}
+
+@keyframes login-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .year-focus {
@@ -1669,6 +1830,7 @@ input[type='checkbox'] {
 }
 
 .auth-panel {
+  animation: login-fade-in 620ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
   margin: min(12vh, 120px) auto 0;
   max-width: 640px;
 }

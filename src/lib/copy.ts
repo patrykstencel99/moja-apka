@@ -15,8 +15,8 @@ export const uiCopy = {
   },
   landing: {
     eyebrow: 'PatternFinder',
-    title: '365 decyzji. Jedno klikniecie i zaczynasz.',
-    subtitle: 'Dotknij dowolny kwadrat. Zaznaczymy go na zielono i przejdziemy do logowania.',
+    title: '365 decyzji. jedno klikniecie. 1095 szans na zlapanie chwili i przerwanie petli.',
+    subtitle: 'Dotknij dowolny kwadrat. znajdz swoj negatywny schemat i zastap go swoim idealnym zyciem.',
     dayAriaLabelTemplate: 'Wybierz dzien {day} i przejdz do logowania.'
   },
   pages: {
