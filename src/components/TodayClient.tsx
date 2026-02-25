@@ -189,6 +189,7 @@ export function TodayClient() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string | null>(null);
+  const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
 
   const seedTriedInBackground = useRef(false);
   const localDate = useMemo(() => todayLocalDate(), []);
@@ -497,96 +498,110 @@ export function TodayClient() {
   );
 
   const submitCheckIn = async () => {
+    if (isSubmittingCheckIn) {
+      return;
+    }
+
+    setIsSubmittingCheckIn(true);
     setError(null);
-    setInfo(null);
+    setInfo('Zapisywanie check-inu...');
 
-    const clientEventId =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+    try {
+      const clientEventId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
 
-    const selectedIds = new Set(quickSignals.map((activity) => activity.id));
-    const payload = {
-      localDate,
-      timestamp: new Date().toISOString(),
-      mood,
-      energy,
-      journal,
-      clientEventId,
-      values: quickSignals
-        .filter((activity) => selectedIds.has(activity.id))
-        .map((activity) =>
-          activity.type === 'BOOLEAN'
-            ? {
-                activityId: activity.id,
-                booleanValue: Boolean(values[activity.id])
-              }
-            : {
-                activityId: activity.id,
-                numericValue: Number(values[activity.id] ?? 0)
-              }
-        )
-    };
-
-    if (!navigator.onLine) {
-      await enqueueCheckIn({
-        clientEventId,
-        createdAt: Date.now(),
-        payload
-      });
-
-      const offlineEntry: CheckIn = {
-        id: `offline-${clientEventId}`,
+      const selectedIds = new Set(quickSignals.map((activity) => activity.id));
+      const payload = {
         localDate,
+        timestamp: new Date().toISOString(),
         mood,
         energy,
         journal,
-        createdAt: new Date().toISOString()
+        clientEventId,
+        values: quickSignals
+          .filter((activity) => selectedIds.has(activity.id))
+          .map((activity) =>
+            activity.type === 'BOOLEAN'
+              ? {
+                  activityId: activity.id,
+                  booleanValue: Boolean(values[activity.id])
+                }
+              : {
+                  activityId: activity.id,
+                  numericValue: Number(values[activity.id] ?? 0)
+                }
+          )
       };
 
-      setCheckins((prev) => [...prev, offlineEntry]);
-      setYearCheckins((prev) => [...prev, offlineEntry]);
-      setInfo(uiCopy.today.offlineSavedInfo);
-    } else {
-      const response = await fetch('/api/checkins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      if (!navigator.onLine) {
+        await enqueueCheckIn({
+          clientEventId,
+          createdAt: Date.now(),
+          payload
+        });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          await handleUnauthorized();
+        const offlineEntry: CheckIn = {
+          id: `offline-${clientEventId}`,
+          localDate,
+          mood,
+          energy,
+          journal,
+          createdAt: new Date().toISOString()
+        };
+
+        setCheckins((prev) => [...prev, offlineEntry]);
+        setYearCheckins((prev) => [...prev, offlineEntry]);
+        setInfo(uiCopy.today.offlineSavedInfo);
+      } else {
+        const response = await fetch('/api/checkins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            await handleUnauthorized();
+            return;
+          }
+
+          const data = (await response.json().catch(() => ({ error: uiCopy.today.saveCheckinFallbackError }))) as {
+            error?: string;
+          };
+          setInfo(null);
+          setError(data.error ?? uiCopy.today.saveCheckinFallbackError);
           return;
         }
 
-        const data = (await response.json().catch(() => ({ error: uiCopy.today.saveCheckinFallbackError }))) as {
-          error?: string;
-        };
-        setError(data.error ?? uiCopy.today.saveCheckinFallbackError);
-        return;
+        await load();
       }
 
-      await load();
-    }
+      setJournal('');
+      setShowSkipReasons(false);
+      setVariantIndex(0);
+      setLastSignals(captureSignals);
 
-    setJournal('');
-    setShowSkipReasons(false);
-    setVariantIndex(0);
-    setLastSignals(captureSignals);
+      const suggestion = buildNextMove({
+        mood,
+        energy,
+        signals: captureSignals,
+        variantIndex: 0
+      });
 
-    const suggestion = buildNextMove({
-      mood,
-      energy,
-      signals: captureSignals,
-      variantIndex: 0
-    });
+      setPendingMove(suggestion);
+      setCaptureOpen(false);
+      setInfo('Check-in zapisany. Kolejny krok gotowy.');
 
-    setPendingMove(suggestion);
-    setCaptureOpen(false);
-
-    if (profile && !profile.onboardingComplete) {
-      await saveProfile({ onboardingComplete: true });
-      setProfile((prev) => (prev ? { ...prev, onboardingComplete: true } : prev));
-      setWelcomeOpen(false);
+      if (profile && !profile.onboardingComplete) {
+        await saveProfile({ onboardingComplete: true });
+        setProfile((prev) => (prev ? { ...prev, onboardingComplete: true } : prev));
+        setWelcomeOpen(false);
+      }
+    } catch {
+      setInfo(null);
+      setError(uiCopy.today.saveCheckinFallbackError);
+    } finally {
+      setIsSubmittingCheckIn(false);
     }
   };
 
@@ -635,6 +650,8 @@ export function TodayClient() {
     });
 
     setPendingMove(suggestion);
+    setShowSkipReasons(false);
+    setInfo('Pokazalem inna propozycje.');
   };
 
   const runWelcome = async () => {
@@ -698,7 +715,7 @@ export function TodayClient() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="stack-lg today-daily">
       {welcomeOpen && (
         <Card
           className="welcome-overlay"
@@ -739,10 +756,10 @@ export function TodayClient() {
           </div>
 
           <div className="inline-actions">
-            <Button onClick={() => void runWelcome()} size="lg" variant="primary" disabled={overlayBusy}>
+            <Button className="daily-action-btn" onClick={() => void runWelcome()} size="lg" variant="primary" disabled={overlayBusy}>
               {overlayBusy ? uiCopy.today.welcome.startCtaLoading : uiCopy.today.welcome.startCta}
             </Button>
-            <Button onClick={handleSkipWelcome} size="md" variant="ghost" disabled={overlayBusy}>
+            <Button className="daily-action-btn" onClick={handleSkipWelcome} size="md" variant="ghost" disabled={overlayBusy}>
               {uiCopy.today.welcome.skipCta}
             </Button>
           </div>
@@ -888,13 +905,19 @@ export function TodayClient() {
         title={uiCopy.today.quickCapture.title}
         subtitle={uiCopy.today.quickCapture.subtitle}
         actions={
-          <Button onClick={() => setCaptureOpen((current) => !current)} size="sm" variant="secondary">
+          <Button
+            className="daily-action-btn"
+            disabled={isSubmittingCheckIn}
+            onClick={() => setCaptureOpen((current) => !current)}
+            size="sm"
+            variant="secondary"
+          >
             {captureOpen ? uiCopy.today.quickCapture.collapse : uiCopy.today.quickCapture.expand}
           </Button>
         }
       >
         {!captureOpen ? (
-          <Button onClick={() => setCaptureOpen(true)} size="lg" variant="primary">
+          <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={() => setCaptureOpen(true)} size="lg" variant="primary">
             {uiCopy.today.quickCapture.startButton}
           </Button>
         ) : (
@@ -935,8 +958,19 @@ export function TodayClient() {
               />
             </label>
 
-            <Button block onClick={submitCheckIn} size="lg" variant="primary">
-              {uiCopy.today.quickCapture.saveButton}
+            <Button
+              block
+              className={['daily-submit-btn', isSubmittingCheckIn ? 'is-loading' : ''].filter(Boolean).join(' ')}
+              disabled={isSubmittingCheckIn}
+              onClick={submitCheckIn}
+              size="lg"
+              variant="primary"
+            >
+              <span className="daily-submit-btn__label">
+                {isSubmittingCheckIn ? 'Zapisywanie check-inu...' : uiCopy.today.quickCapture.saveButton}
+              </span>
+              {isSubmittingCheckIn && <span aria-hidden className="daily-submit-btn__spinner" />}
+              <span aria-hidden className="daily-submit-btn__spark" />
             </Button>
           </>
         )}
@@ -959,22 +993,29 @@ export function TodayClient() {
               </small>
             </div>
 
-            <div className="decision-actions">
-              <Button onClick={() => finalizeDecision('accepted')} variant="primary">
+            <div className="decision-actions daily-decision-actions">
+              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={() => finalizeDecision('accepted')} variant="primary">
                 {uiCopy.today.nextStep.accept}
               </Button>
-              <Button onClick={swapDecision} variant="secondary">
+              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={swapDecision} variant="secondary">
                 {uiCopy.today.nextStep.swap}
               </Button>
-              <Button onClick={() => setShowSkipReasons(true)} variant="ghost">
+              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={() => setShowSkipReasons(true)} variant="ghost">
                 {uiCopy.today.nextStep.skip}
               </Button>
             </div>
 
             {showSkipReasons && (
-              <div className="decision-actions">
+              <div className="decision-actions daily-decision-actions">
                 {SKIP_REASON_OPTIONS.map((option) => (
-                  <Button key={option.id} onClick={() => finalizeDecision('skipped', option.id)} size="sm" variant="ghost">
+                  <Button
+                    className="daily-action-btn"
+                    disabled={isSubmittingCheckIn}
+                    key={option.id}
+                    onClick={() => finalizeDecision('skipped', option.id)}
+                    size="sm"
+                    variant="ghost"
+                  >
                     {option.label}
                   </Button>
                 ))}

@@ -1888,6 +1888,90 @@ input[type='checkbox'] {
   gap: var(--space-2);
 }
 
+.today-daily .ui-btn {
+  transition:
+    transform 220ms ease-in-out,
+    box-shadow 280ms ease-in-out,
+    filter 220ms ease-in-out;
+}
+
+.today-daily .ui-btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+.daily-decision-actions {
+  align-items: center;
+}
+
+.daily-action-btn {
+  overflow: hidden;
+  position: relative;
+}
+
+.daily-action-btn::after {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0) 14%, rgba(255, 255, 255, 0.24) 50%, rgba(255, 255, 255, 0) 86%);
+  content: '';
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-115%);
+  transition: opacity 220ms ease-in-out;
+}
+
+.daily-action-btn:hover::after,
+.daily-action-btn:focus-visible::after {
+  animation: daily-button-sheen 900ms ease-in-out;
+  opacity: 1;
+}
+
+.daily-action-btn:focus-visible {
+  outline: 2px solid rgba(30, 63, 174, 0.45);
+  outline-offset: 2px;
+}
+
+.daily-submit-btn {
+  gap: var(--space-2);
+  min-height: 2.85rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.daily-submit-btn__label {
+  position: relative;
+  z-index: 2;
+}
+
+.daily-submit-btn__spinner {
+  animation: daily-spin 850ms linear infinite;
+  border: 2px solid rgba(255, 255, 255, 0.34);
+  border-radius: 999px;
+  border-top-color: rgba(255, 255, 255, 0.96);
+  height: 0.95rem;
+  position: relative;
+  width: 0.95rem;
+  z-index: 2;
+}
+
+.daily-submit-btn__spark {
+  background: linear-gradient(110deg, rgba(255, 255, 255, 0) 10%, rgba(255, 255, 255, 0.25) 48%, rgba(255, 255, 255, 0) 90%);
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-120%);
+  z-index: 1;
+}
+
+.daily-submit-btn.is-loading {
+  animation: daily-breathe 1.4s ease-in-out infinite;
+}
+
+.daily-submit-btn.is-loading .daily-submit-btn__spark {
+  animation: daily-submit-sheen 1.2s ease-in-out infinite;
+  opacity: 1;
+}
+
 .daily-verdict {
   border: 1px solid var(--line-default);
   border-radius: var(--radius-md);
@@ -1909,6 +1993,47 @@ input[type='checkbox'] {
 .daily-verdict--wysokie {
   background: rgba(125, 32, 47, 0.12);
   border-color: rgba(125, 32, 47, 0.28);
+}
+
+@keyframes daily-button-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes daily-submit-sheen {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes daily-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes daily-breathe {
+  0%,
+  100% {
+    filter: saturate(1);
+  }
+
+  50% {
+    filter: saturate(1.14);
+  }
 }
 
 .review-cta-row {
