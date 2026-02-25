@@ -412,16 +412,16 @@ input[type='checkbox'] {
   opacity: 0.14;
   transform: scale(0.976);
   transition:
-    opacity 2500ms cubic-bezier(0.16, 0.82, 0.2, 1),
-    transform 2500ms cubic-bezier(0.16, 0.82, 0.2, 1);
+    opacity 2600ms ease-in,
+    transform 2600ms ease-in;
 }
 
 .landing-galaxy.is-diving .landing-cosmos-art {
   filter: blur(2px);
   opacity: 0.38;
   transition:
-    opacity 2500ms cubic-bezier(0.16, 0.82, 0.2, 1),
-    filter 2500ms cubic-bezier(0.16, 0.82, 0.2, 1);
+    opacity 2600ms ease-in-out,
+    filter 2600ms ease-in-out;
 }
 
 .landing-galaxy::before {
@@ -704,40 +704,113 @@ input[type='checkbox'] {
 }
 
 .landing-dive {
-  background: linear-gradient(150deg, #8af0b2 0%, #2e9257 46%, #102f20 100%);
-  border: 1px solid rgba(187, 246, 209, 0.92);
-  border-radius: 3px;
+  background: linear-gradient(148deg, #b8ffd8 0%, #5fd194 30%, #207a47 63%, #091e14 100%);
+  border: 1px solid rgba(225, 255, 237, 0.94);
+  border-radius: 4px;
   box-shadow:
-    0 0 0 2px rgba(13, 21, 17, 0.92),
-    0 0 34px rgba(102, 207, 147, 0.5);
+    0 0 0 2px rgba(9, 16, 13, 0.92),
+    0 0 38px rgba(116, 224, 163, 0.56),
+    0 0 120px rgba(69, 178, 120, 0.2);
   height: var(--dive-size);
   left: var(--dive-x);
   opacity: 0;
+  overflow: hidden;
   pointer-events: none;
   position: fixed;
   top: var(--dive-y);
   transform: translate(-50%, -50%) scale(1);
   transform-origin: center;
-  will-change: left, top, transform, filter, box-shadow, opacity;
+  will-change: left, top, transform, filter, box-shadow, opacity, background;
   width: var(--dive-size);
   z-index: 8;
 }
 
+.landing-dive-ring,
+.landing-dive-icon {
+  position: absolute;
+}
+
+.landing-dive-ring {
+  border: 1.4px solid rgba(241, 255, 248, 0.76);
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 20px rgba(168, 255, 210, 0.4),
+    0 0 16px rgba(168, 255, 210, 0.4);
+  inset: 18%;
+}
+
+.landing-dive-icon {
+  background: linear-gradient(148deg, rgba(245, 255, 250, 0.98) 0%, rgba(194, 245, 216, 0.86) 100%);
+  border: 1.4px solid rgba(11, 23, 17, 0.7);
+  border-radius: 2px;
+  box-shadow: 0 0 18px rgba(173, 255, 212, 0.4);
+  height: 42%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(45deg);
+  width: 42%;
+}
+
+.landing-dive-icon::before,
+.landing-dive-icon::after {
+  background: rgba(8, 20, 14, 0.82);
+  border-radius: 2px;
+  content: '';
+  left: 50%;
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.landing-dive-icon::before {
+  height: 1.6px;
+  width: 56%;
+}
+
+.landing-dive-icon::after {
+  height: 56%;
+  width: 1.6px;
+}
+
 .landing-dive.is-active {
-  animation: landing-dive-cinematic 4400ms cubic-bezier(0.12, 0.72, 0.1, 1) forwards;
+  animation: landing-dive-cinematic 4700ms both;
 }
 
 .landing-transition-veil {
-  background: radial-gradient(circle at 50% 50%, rgba(8, 14, 12, 0) 0%, rgba(3, 5, 8, 0.99) 72%);
   inset: 0;
   opacity: 0;
   pointer-events: none;
   position: fixed;
-  z-index: 7;
+  z-index: 9;
+}
+
+.landing-transition-veil::before,
+.landing-transition-veil::after {
+  content: '';
+  inset: 0;
+  position: absolute;
+}
+
+.landing-transition-veil::before {
+  background: radial-gradient(circle at 50% 50%, rgba(5, 10, 8, 0) 0%, rgba(0, 0, 0, 0.98) 72%);
+  opacity: 0;
+}
+
+.landing-transition-veil::after {
+  background: #000;
+  opacity: 0;
 }
 
 .landing-transition-veil.is-visible {
-  animation: landing-veil-cinematic 2200ms cubic-bezier(0.18, 0.7, 0.04, 1) forwards;
+  opacity: 1;
+}
+
+.landing-transition-veil.is-visible::before {
+  animation: landing-veil-cinematic 2600ms ease-in-out forwards;
+}
+
+.landing-transition-veil.is-visible::after {
+  animation: landing-veil-blackout 2600ms ease-in forwards;
 }
 
 @keyframes landing-fade-in {
@@ -825,43 +898,49 @@ input[type='checkbox'] {
     top: var(--dive-y);
     filter: saturate(1);
     box-shadow:
-      0 0 0 2px rgba(13, 21, 17, 0.92),
-      0 0 26px rgba(102, 207, 147, 0.46);
+      0 0 0 2px rgba(11, 20, 15, 0.9),
+      0 0 30px rgba(124, 236, 174, 0.58);
     transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    animation-timing-function: ease-in;
   }
-  34% {
+  32% {
     left: 50vw;
     top: 50vh;
-    filter: saturate(1.06);
+    filter: saturate(1.1);
     box-shadow:
-      0 0 0 2px rgba(13, 21, 17, 0.78),
-      0 0 78px rgba(122, 238, 173, 0.64);
-    transform: translate(-50%, -50%) scale(24) rotate(-0.3deg);
+      0 0 0 2px rgba(10, 18, 14, 0.78),
+      0 0 84px rgba(130, 244, 182, 0.7);
+    transform: translate(-50%, -50%) scale(26) rotate(-0.26deg);
+    animation-timing-function: ease-out;
   }
-  44% {
-    transform: translate(calc(-50% + 1px), calc(-50% - 1px)) scale(28) rotate(0.22deg);
+  46% {
+    transform: translate(calc(-50% + 1px), calc(-50% - 1px)) scale(31) rotate(0.2deg);
+    animation-timing-function: ease-in-out;
   }
-  50% {
-    transform: translate(calc(-50% - 1px), calc(-50% + 1px)) scale(31) rotate(-0.22deg);
+  54% {
+    transform: translate(calc(-50% - 1px), calc(-50% + 1px)) scale(35) rotate(-0.2deg);
   }
-  58% {
-    filter: saturate(1.18);
+  66% {
+    filter: saturate(1.24);
+    opacity: 1;
     box-shadow:
-      0 0 0 1px rgba(13, 21, 17, 0.6),
-      0 0 110px rgba(132, 244, 180, 0.74);
-    transform: translate(-50%, -50%) scale(36) rotate(0deg);
+      0 0 0 1px rgba(10, 18, 14, 0.54),
+      0 0 142px rgba(137, 248, 186, 0.7);
+    transform: translate(-50%, -50%) scale(48) rotate(0deg);
+    animation-timing-function: ease-in;
   }
-  76% {
-    transform: translate(-50%, -50%) scale(44);
+  82% {
+    opacity: 0.98;
+    transform: translate(-50%, -50%) scale(72);
   }
   100% {
-    opacity: 1;
+    opacity: 0.95;
     left: 50vw;
     top: 50vh;
-    filter: saturate(1.22);
+    filter: saturate(1.32);
     box-shadow:
-      0 0 0 1px rgba(13, 21, 17, 0.3),
-      0 0 180px rgba(132, 244, 180, 0.2);
+      0 0 0 1px rgba(8, 14, 11, 0.16),
+      0 0 230px rgba(140, 250, 190, 0.16);
     transform: translate(-50%, -50%) scale(var(--dive-scale, 220)) rotate(0deg);
   }
 }
@@ -870,11 +949,24 @@ input[type='checkbox'] {
   0% {
     opacity: 0;
   }
-  62% {
-    opacity: 0.32;
+  40% {
+    opacity: 0.22;
+  }
+  72% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0.88;
+  }
+}
+
+@keyframes landing-veil-blackout {
+  0%,
+  68% {
+    opacity: 0;
   }
   84% {
-    opacity: 0.68;
+    opacity: 0.42;
   }
   100% {
     opacity: 1;
@@ -1989,12 +2081,12 @@ input[type='checkbox'] {
 }
 
 .auth-panel--from-landing {
-  animation: login-from-landing 1600ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
+  animation: login-from-landing 1600ms ease-out both;
 }
 
 .login-transition-backdrop {
-  animation: login-backdrop-fade 1700ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
-  background: radial-gradient(circle at 50% 58%, rgba(20, 30, 26, 0.82) 0%, rgba(6, 8, 12, 0.98) 75%);
+  animation: login-backdrop-fade 1900ms ease-out both;
+  background: radial-gradient(circle at 50% 58%, rgba(14, 20, 27, 0.62) 0%, rgba(0, 0, 0, 0.98) 64%, #000 100%);
   inset: 0;
   pointer-events: none;
   position: fixed;
@@ -2016,6 +2108,9 @@ input[type='checkbox'] {
 
 @keyframes login-backdrop-fade {
   from {
+    opacity: 1;
+  }
+  38% {
     opacity: 1;
   }
   to {

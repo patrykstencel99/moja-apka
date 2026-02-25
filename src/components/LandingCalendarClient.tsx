@@ -7,8 +7,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { uiCopy } from '@/lib/copy';
 
 const DOTS_TOTAL = 365;
-const DIVE_FADE_DELAY_MS = 2500;
-const DIVE_NAV_DELAY_MS = 4700;
+const DIVE_FADE_DELAY_MS = 2300;
+const DIVE_NAV_DELAY_MS = 5200;
 
 type DivePoint = {
   x: number;
@@ -182,7 +182,10 @@ export function LandingCalendarClient() {
               '--dive-scale': String(divePoint.scale)
             } as CSSProperties
           }
-        />
+        >
+          <span className="landing-dive-ring" />
+          <span className="landing-dive-icon" />
+        </div>
       )}
 
       <div aria-hidden className={['landing-transition-veil', veilVisible ? 'is-visible' : ''].join(' ')} />
