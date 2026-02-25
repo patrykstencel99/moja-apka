@@ -36,6 +36,7 @@ export function LoginClient() {
   const [setupInfo, setSetupInfo] = useState<SetupInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fromLandingTransition, setFromLandingTransition] = useState(false);
 
   const loadStatus = async () => {
     setMode('loading');
@@ -68,6 +69,18 @@ export function LoginClient() {
 
   useEffect(() => {
     void loadStatus();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const transitionSource = window.sessionStorage.getItem('pf-login-transition');
+    if (transitionSource === 'landing-dive') {
+      setFromLandingTransition(true);
+      window.sessionStorage.removeItem('pf-login-transition');
+    }
   }, []);
 
   const handleStart = async () => {
@@ -121,7 +134,9 @@ export function LoginClient() {
   };
 
   return (
-    <section className="panel auth-panel">
+    <>
+      {fromLandingTransition && <div aria-hidden className="login-transition-backdrop" />}
+      <section className={['panel auth-panel', fromLandingTransition ? 'auth-panel--from-landing' : ''].join(' ')}>
       <header className="hero-header">
         <span className="eyebrow">{uiCopy.login.heroEyebrow}</span>
         <h1>{uiCopy.login.heroTitle}</h1>
@@ -228,6 +243,7 @@ export function LoginClient() {
                 : uiCopy.login.setupHelp}
         </small>
       </div>
-    </section>
+      </section>
+    </>
   );
 }

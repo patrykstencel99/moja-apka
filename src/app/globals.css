@@ -590,15 +590,32 @@ input[type='checkbox'] {
   padding: 0 0.08em;
 }
 
-.landing-emphasis--red::after {
-  animation: landing-circle 980ms cubic-bezier(0.15, 0.86, 0.2, 1) 2550ms forwards;
-  border: 2px solid rgba(255, 122, 136, 0.9);
-  border-radius: 999px;
-  content: '';
-  inset: -0.28em -0.3em -0.2em;
-  opacity: 0;
+.landing-emphasis-red-text {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-red-loop {
+  height: calc(100% + 0.72em);
+  inset: -0.36em -0.4em;
+  overflow: visible;
+  pointer-events: none;
   position: absolute;
-  transform: scale(0.72) rotate(-7deg);
+  width: calc(100% + 0.8em);
+  z-index: 0;
+}
+
+.landing-red-loop path {
+  animation: landing-loop-draw 1100ms cubic-bezier(0.15, 0.86, 0.2, 1) 2550ms forwards;
+  fill: none;
+  opacity: 0;
+  stroke: rgba(255, 122, 136, 0.92);
+  stroke-dasharray: 760;
+  stroke-dashoffset: 760;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3.1px;
+  vector-effect: non-scaling-stroke;
 }
 
 .landing-subtitle {
@@ -692,23 +709,32 @@ input[type='checkbox'] {
   pointer-events: none;
   position: fixed;
   top: var(--dive-y);
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(1);
   transform-origin: center;
+  transition:
+    transform 4200ms cubic-bezier(0.12, 0.9, 0.08, 1),
+    border-radius 4200ms cubic-bezier(0.12, 0.9, 0.08, 1),
+    box-shadow 4200ms cubic-bezier(0.12, 0.9, 0.08, 1);
   width: var(--dive-size);
   z-index: 8;
 }
 
 .landing-dive.is-active {
-  animation: landing-dive-zoom 900ms cubic-bezier(0.12, 0.86, 0.1, 1) forwards;
+  opacity: 1;
+  border-radius: 0;
+  box-shadow:
+    0 0 0 1px rgba(13, 21, 17, 0.4),
+    0 0 120px rgba(102, 207, 147, 0.22);
+  transform: translate(-50%, -50%) scale(var(--dive-scale, 220));
 }
 
 .landing-transition-veil {
-  background: radial-gradient(circle at 50% 50%, rgba(10, 17, 14, 0) 0%, rgba(3, 5, 8, 0.96) 70%);
+  background: radial-gradient(circle at 50% 50%, rgba(8, 14, 12, 0) 0%, rgba(3, 5, 8, 0.99) 72%);
   inset: 0;
   opacity: 0;
   pointer-events: none;
   position: fixed;
-  transition: opacity 320ms ease;
+  transition: opacity 1300ms cubic-bezier(0.22, 0.85, 0.2, 1);
   z-index: 7;
 }
 
@@ -780,37 +806,17 @@ input[type='checkbox'] {
   }
 }
 
-@keyframes landing-circle {
+@keyframes landing-loop-draw {
   0% {
     opacity: 0;
-    transform: scale(0.72) rotate(-7deg);
+    stroke-dashoffset: 760;
   }
-  60% {
+  8% {
     opacity: 1;
-    transform: scale(1.04) rotate(-4deg);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) rotate(-5deg);
-  }
-}
-
-@keyframes landing-dive-zoom {
-  0% {
-    opacity: 1;
-    width: var(--dive-size);
-    height: var(--dive-size);
-    left: var(--dive-x);
-    top: var(--dive-y);
-    border-radius: 3px;
   }
   100% {
     opacity: 1;
-    width: 220vmax;
-    height: 220vmax;
-    left: 50vw;
-    top: 50vh;
-    border-radius: 18px;
+    stroke-dashoffset: 0;
   }
 }
 
@@ -1919,6 +1925,41 @@ input[type='checkbox'] {
   animation: login-fade-in 620ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
   margin: min(12vh, 120px) auto 0;
   max-width: 640px;
+}
+
+.auth-panel--from-landing {
+  animation: login-from-landing 1200ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
+}
+
+.login-transition-backdrop {
+  animation: login-backdrop-fade 1250ms cubic-bezier(0.16, 0.84, 0.2, 1) both;
+  background: radial-gradient(circle at 50% 58%, rgba(20, 30, 26, 0.82) 0%, rgba(6, 8, 12, 0.98) 75%);
+  inset: 0;
+  pointer-events: none;
+  position: fixed;
+  z-index: 6;
+}
+
+@keyframes login-from-landing {
+  from {
+    filter: blur(6px);
+    opacity: 0;
+    transform: translateY(18px) scale(0.95);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes login-backdrop-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
 }
 
 .radio-row,

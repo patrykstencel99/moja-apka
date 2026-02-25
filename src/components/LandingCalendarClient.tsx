@@ -7,13 +7,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { uiCopy } from '@/lib/copy';
 
 const DOTS_TOTAL = 365;
-const DIVE_FADE_DELAY_MS = 520;
-const DIVE_NAV_DELAY_MS = 1020;
+const DIVE_FADE_DELAY_MS = 2400;
+const DIVE_NAV_DELAY_MS = 4200;
 
 type DivePoint = {
   x: number;
   y: number;
   size: number;
+  scale: number;
 };
 
 export function LandingCalendarClient() {
@@ -87,20 +88,39 @@ export function LandingCalendarClient() {
     }
 
     const rect = event.currentTarget.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const cornerDistances = [
+      Math.hypot(centerX, centerY),
+      Math.hypot(window.innerWidth - centerX, centerY),
+      Math.hypot(centerX, window.innerHeight - centerY),
+      Math.hypot(window.innerWidth - centerX, window.innerHeight - centerY)
+    ];
+    const maxDistance = Math.max(...cornerDistances);
+    const baseSize = Math.max(10, rect.width);
+    const targetScale = Math.max(220, Math.ceil((maxDistance * Math.SQRT2) / baseSize) + 40);
+
     setSelectedDot(index);
     setNavigating(true);
     setDivePoint({
-      x: rect.left + rect.width / 2,
-      y: rect.top + rect.height / 2,
-      size: rect.width
+      x: centerX,
+      y: centerY,
+      size: baseSize,
+      scale: targetScale
     });
-    setIsDiving(true);
+    setIsDiving(false);
+    setVeilVisible(false);
+
+    window.requestAnimationFrame(() => {
+      setIsDiving(true);
+    });
 
     window.setTimeout(() => {
       setVeilVisible(true);
     }, DIVE_FADE_DELAY_MS);
 
     window.setTimeout(() => {
+      window.sessionStorage.setItem('pf-login-transition', 'landing-dive');
       router.push('/login');
     }, DIVE_NAV_DELAY_MS);
   };
@@ -124,7 +144,12 @@ export function LandingCalendarClient() {
           {uiCopy.landing.titleSecondaryLead}{' '}
           <span className="landing-emphasis landing-emphasis--green">{uiCopy.landing.titleSecondaryGreen}</span>{' '}
           {uiCopy.landing.titleSecondaryJoiner}{' '}
-          <span className="landing-emphasis landing-emphasis--red">{uiCopy.landing.titleSecondaryRed}</span>
+          <span className="landing-emphasis landing-emphasis--red">
+            <span className="landing-emphasis-red-text">{uiCopy.landing.titleSecondaryRed}</span>
+            <svg className="landing-red-loop" viewBox="0 0 300 90" preserveAspectRatio="none">
+              <path d="M12 52 C 24 15, 276 4, 286 43 C 295 80, 18 91, 12 52 Z" />
+            </svg>
+          </span>
         </h2>
         <p className="landing-subtitle">{uiCopy.landing.subtitle}</p>
 
@@ -152,7 +177,8 @@ export function LandingCalendarClient() {
             {
               '--dive-x': `${divePoint.x}px`,
               '--dive-y': `${divePoint.y}px`,
-              '--dive-size': `${Math.max(10, divePoint.size)}px`
+              '--dive-size': `${Math.max(10, divePoint.size)}px`,
+              '--dive-scale': String(divePoint.scale)
             } as CSSProperties
           }
         />
