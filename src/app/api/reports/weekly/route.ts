@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { buildInsightsReport } from '@/lib/insights';
+import { apiCopy } from '@/lib/copy';
 import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { weekStartFromIso } from '@/lib/date';
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     const week = new URL(request.url).searchParams.get('week');
 
     if (!week || !/^\d{4}-\d{2}$/.test(week)) {
-      return jsonError('Podaj week=YYYY-WW', 400);
+      return jsonError(apiCopy.reports.invalidWeek, 400);
     }
 
     const [yearStr, weekStr] = week.split('-');
@@ -53,8 +54,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(report);
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return jsonError('Unauthorized', 401);
+      return jsonError(apiCopy.common.unauthorized, 401);
     }
-    return jsonError('Nie udalo sie pobrac raportu tygodniowego', 500);
+    return jsonError(apiCopy.reports.weeklyFailed, 500);
   }
 }

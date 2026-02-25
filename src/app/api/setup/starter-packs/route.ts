@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { describeStarterSystem } from '@/lib/activity-meta';
+import { apiCopy } from '@/lib/copy';
 import { STARTER_SYSTEMS } from '@/lib/starter-packs';
 
 export async function GET(request: NextRequest) {
@@ -14,6 +15,6 @@ export async function GET(request: NextRequest) {
       }))
     });
   } catch {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: apiCopy.common.unauthorized }, { status: 401 });
   }
 }

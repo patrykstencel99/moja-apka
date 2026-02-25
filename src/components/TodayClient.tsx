@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
@@ -10,17 +10,19 @@ import { Card } from '@/components/ui/Card';
 import { CheckboxTile } from '@/components/ui/CheckboxTile';
 import { RangeField } from '@/components/ui/RangeField';
 import { StatTile } from '@/components/ui/StatTile';
-import { DecisionVisualStage } from '@/components/visuals/DecisionVisualStage';
+import { uiCopy } from '@/lib/copy';
 import { enqueueCheckIn, flushQueuedCheckIns } from '@/lib/offline-queue';
+import { appendExperiment, readActiveNextMove, type NextMoveRecord, writeActiveNextMove } from '@/lib/state/local-storage';
 import { buildNextMove, type GeneratedNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
-import {
-  STORAGE_KEYS,
-  appendExperiment,
-  readActiveNextMove,
-  readBoolean,
-  type NextMoveRecord,
-  writeActiveNextMove
-} from '@/lib/state/local-storage';
+
+type Focus = 'ENERGY' | 'FOCUS' | 'SLEEP';
+type CheckinPreference = 'MORNING' | 'EVENING' | 'LATER';
+
+type UserProfile = {
+  onboardingComplete: boolean;
+  focus: Focus;
+  checkinPreference: CheckinPreference;
+};
 
 type Activity = {
   id: string;
@@ -54,33 +56,37 @@ type GamificationStatus = {
   avgEntriesPerDay: number;
 };
 
-type DailyVerdict = {
-  level: 'niskie' | 'srednie' | 'wysokie';
-  line: string;
-  oneMove: string;
-  minimalVariant: string;
-};
-
-type Props = {
-  onboardingMode?: boolean;
-};
-
-const ICON_LABEL: Record<string, string> = {
-  moon: 'SN',
-  fork: 'OD',
-  bolt: 'EN',
-  dumbbell: 'TR',
-  briefcase: 'PR',
-  glass: 'UZ',
-  journal: 'JR',
-  pulse: 'PT'
-};
-
 const SKIP_REASON_OPTIONS: Array<{ id: NextMoveRecord['skipReason']; label: string }> = [
-  { id: 'brak-czasu', label: 'Brak czasu' },
-  { id: 'zly-moment', label: 'Zly moment' },
-  { id: 'niska-wiara', label: 'Niska wiara w efekt' }
+  { id: 'brak-czasu', label: uiCopy.today.skipReasons.noTime },
+  { id: 'zly-moment', label: uiCopy.today.skipReasons.outsideControl },
+  { id: 'niska-wiara', label: uiCopy.today.skipReasons.lowPriority }
 ];
+
+const FOCUS_LABEL: Record<Focus, string> = {
+  ENERGY: 'Energia',
+  FOCUS: 'Skupienie',
+  SLEEP: 'Sen'
+};
+
+const PREFERENCE_LABEL: Record<CheckinPreference, string> = {
+  EVENING: 'Wieczorem',
+  MORNING: 'Rano',
+  LATER: 'Ustawie pozniej'
+};
+
+const QUICK_SIGNAL_BY_FOCUS: Record<Focus, string[]> = {
+  ENERGY: [
+    'Spadek energii przed 14:00',
+    'Pierwszy posilek do 90 min od pobudki',
+    'Nawodnienie do poludnia'
+  ],
+  FOCUS: [
+    '60 min glebokiej pracy przed poludniem',
+    'Plan jednego priorytetu dnia',
+    'Powiadomienia wyciszone podczas bloku'
+  ],
+  SLEEP: ['Brak ekranu 45 min przed snem', 'Godzina snu zgodna z planem', 'Poranne odswiezenie']
+};
 
 function todayLocalDate() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -97,58 +103,26 @@ function formatTime(value: string) {
   });
 }
 
-function signalPurpose(activity: Activity) {
-  if (activity.valenceHint === 'negative') {
-    return 'Po co to: sygnal ryzyka. Wylap trigger zanim rozbije dzien.';
-  }
-  if (activity.valenceHint === 'positive') {
-    return 'Po co to: sygnal wzmacniajacy. Powielaj go jako standard.';
-  }
-  return 'Po co to: sygnal kontrolny. Pomaga odroznic stan od narracji.';
-}
-
-function buildVerdict(params: {
-  mood: number;
-  energy: number;
-  signals: NextMoveInputSignal[];
-  move: GeneratedNextMove;
-}): DailyVerdict {
-  const negativeHits = params.signals.filter(
-    (signal) =>
-      (signal.type === 'BOOLEAN' && signal.booleanValue && signal.valenceHint === 'negative') ||
-      (signal.type === 'NUMERIC_0_10' && (signal.numericValue ?? 0) >= 7 && signal.valenceHint !== 'positive')
-  ).length;
-
-  const score = Math.max(0, 10 - params.energy) + (params.mood <= 4 ? 2 : 0) + negativeHits * 2;
-  if (score >= 10) {
-    return {
-      level: 'wysokie',
-      line: 'Verdict: Dzis ryzyko spadku energii jest wysokie.',
-      oneMove: params.move.title,
-      minimalVariant: params.move.minimalVariant
-    };
+function readProfilePayload(data: unknown): UserProfile | null {
+  if (typeof data !== 'object' || !data) {
+    return null;
   }
 
-  if (score >= 6) {
-    return {
-      level: 'srednie',
-      line: 'Verdict: Dzis ryzyko spadku energii jest srednie.',
-      oneMove: params.move.title,
-      minimalVariant: params.move.minimalVariant
-    };
+  const obj = data as Partial<UserProfile>;
+  if (!obj.focus || !obj.checkinPreference || typeof obj.onboardingComplete !== 'boolean') {
+    return null;
   }
 
   return {
-    level: 'niskie',
-    line: 'Verdict: Dzis ryzyko spadku energii jest niskie.',
-    oneMove: params.move.title,
-    minimalVariant: params.move.minimalVariant
+    onboardingComplete: obj.onboardingComplete,
+    focus: obj.focus,
+    checkinPreference: obj.checkinPreference
   };
 }
 
-export function TodayClient({ onboardingMode = false }: Props) {
+export function TodayClient() {
   const router = useRouter();
-
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [checkins, setCheckins] = useState<CheckIn[]>([]);
   const [gamification, setGamification] = useState<GamificationStatus | null>(null);
@@ -158,64 +132,171 @@ export function TodayClient({ onboardingMode = false }: Props) {
   const [energy, setEnergy] = useState(6);
   const [journal, setJournal] = useState('');
 
-  const [captureOpen, setCaptureOpen] = useState(onboardingMode);
-  const [showTopFive, setShowTopFive] = useState(false);
-  const [fullContext, setFullContext] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const [selectedFocus, setSelectedFocus] = useState<Focus>('ENERGY');
+  const [selectedPreference, setSelectedPreference] = useState<CheckinPreference>('EVENING');
+  const [captureOpen, setCaptureOpen] = useState(true);
+
   const [pendingMove, setPendingMove] = useState<GeneratedNextMove | null>(null);
   const [activeMove, setActiveMove] = useState<NextMoveRecord | null>(null);
   const [showSkipReasons, setShowSkipReasons] = useState(false);
   const [variantIndex, setVariantIndex] = useState(0);
   const [lastSignals, setLastSignals] = useState<NextMoveInputSignal[]>([]);
-  const [dailyVerdict, setDailyVerdict] = useState<DailyVerdict | null>(null);
 
+  const [seedStatus, setSeedStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [overlayBusy, setOverlayBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string | null>(null);
 
+  const seedTriedInBackground = useRef(false);
   const localDate = useMemo(() => todayLocalDate(), []);
 
-  useEffect(() => {
-    setActiveMove(readActiveNextMove());
-    if (!onboardingMode) {
-      const quickDefault = readBoolean(STORAGE_KEYS.quickDefault, true);
-      setCaptureOpen(quickDefault);
-    }
-  }, [onboardingMode]);
-
-  const load = useCallback(async () => {
-    setError(null);
-
-    const [activitiesRes, checkinsRes, gamRes] = await Promise.all([
-      fetch('/api/setup/activities'),
-      fetch(`/api/checkins?from=${localDate}&to=${localDate}`),
-      fetch('/api/gamification/status')
-    ]);
-
-    if (!activitiesRes.ok || !checkinsRes.ok || !gamRes.ok) {
-      setError('Nie udalo sie zsynchronizowac danych dnia.');
-      return;
-    }
-
-    const activitiesData = (await activitiesRes.json()) as { activities: Activity[] };
-    const checkinsData = (await checkinsRes.json()) as CheckInsResponse;
-    const gamData = (await gamRes.json()) as GamificationStatus;
-
-    setActivities(activitiesData.activities);
-    setCheckins(checkinsData.checkIns);
-    setGamification(gamData);
-
+  const updateValuesFromActivities = useCallback((nextActivities: Activity[]) => {
     setValues((prev) => {
-      const next = { ...prev };
-      for (const activity of activitiesData.activities) {
+      const next: Record<string, number | boolean> = { ...prev };
+      for (const activity of nextActivities) {
         if (next[activity.id] === undefined) {
           next[activity.id] = activity.type === 'BOOLEAN' ? false : 0;
         }
       }
       return next;
     });
-  }, [localDate]);
+  }, []);
+
+  const handleUnauthorized = useCallback(async () => {
+    setError(uiCopy.today.sessionExpired);
+    await fetch('/api/session/end', { method: 'POST' }).catch(() => null);
+    router.replace('/login');
+    router.refresh();
+  }, [router]);
+
+  const saveProfile = useCallback(async (payload: Partial<UserProfile>) => {
+    const response = await fetch('/api/user/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = readProfilePayload(await response.json().catch(() => null));
+    if (data) {
+      setProfile(data);
+      setSelectedFocus(data.focus);
+      setSelectedPreference(data.checkinPreference);
+    }
+
+    return data;
+  }, []);
+
+  const seedSignals = useCallback(
+    async (focus: Focus, checkinPreference: CheckinPreference, silent = false) => {
+      setSeedStatus('loading');
+
+      const response = await fetch('/api/setup/focus-seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ focus, checkinPreference })
+      }).catch(() => null);
+
+      if (!response || !response.ok) {
+        setSeedStatus('failed');
+        if (!silent) {
+          setInfo(uiCopy.today.seedLoadingInfo);
+        }
+        return false;
+      }
+
+      const data = (await response.json().catch(() => null)) as
+        | {
+            focus: Focus;
+            checkinPreference: CheckinPreference;
+            activities: Activity[];
+          }
+        | null;
+
+      if (!data) {
+        setSeedStatus('failed');
+        return false;
+      }
+
+      setSeedStatus('ready');
+      setProfile((prev) => {
+        if (!prev) {
+          return {
+            onboardingComplete: false,
+            focus: data.focus,
+            checkinPreference: data.checkinPreference
+          };
+        }
+
+        return {
+          ...prev,
+          focus: data.focus,
+          checkinPreference: data.checkinPreference
+        };
+      });
+      setSelectedFocus(data.focus);
+      setSelectedPreference(data.checkinPreference);
+      setActivities(data.activities);
+      updateValuesFromActivities(data.activities);
+
+      if (!silent) {
+        setInfo(uiCopy.today.seedReadyInfo);
+      }
+
+      return true;
+    },
+    [updateValuesFromActivities]
+  );
+
+  const load = useCallback(async () => {
+    setError(null);
+
+    const [profileRes, activitiesRes, checkinsRes, gamRes] = await Promise.all([
+      fetch('/api/user/profile', { cache: 'no-store' }),
+      fetch('/api/setup/activities', { cache: 'no-store' }),
+      fetch(`/api/checkins?from=${localDate}&to=${localDate}`, { cache: 'no-store' }),
+      fetch('/api/gamification/status', { cache: 'no-store' })
+    ]);
+
+    if ([profileRes, activitiesRes, checkinsRes, gamRes].some((response) => response.status === 401)) {
+      await handleUnauthorized();
+      return;
+    }
+
+    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !gamRes.ok) {
+      setError(uiCopy.today.daySyncError);
+      return;
+    }
+
+    const profileData = readProfilePayload(await profileRes.json().catch(() => null));
+    const activitiesData = (await activitiesRes.json()) as { activities: Activity[] };
+    const checkinsData = (await checkinsRes.json()) as CheckInsResponse;
+    const gamData = (await gamRes.json()) as GamificationStatus;
+
+    if (profileData) {
+      setProfile(profileData);
+      setSelectedFocus(profileData.focus);
+      setSelectedPreference(profileData.checkinPreference);
+    }
+
+    setActivities(activitiesData.activities);
+    setCheckins(checkinsData.checkIns);
+    setGamification(gamData);
+    updateValuesFromActivities(activitiesData.activities);
+
+    const shouldShowWelcome =
+      (profileData ? !profileData.onboardingComplete : false) || activitiesData.activities.length === 0;
+    setWelcomeOpen(shouldShowWelcome && !welcomeDismissed);
+  }, [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed]);
 
   useEffect(() => {
+    setActiveMove(readActiveNextMove());
     void load();
   }, [load]);
 
@@ -239,59 +320,61 @@ export function TodayClient({ onboardingMode = false }: Props) {
     };
 
     window.addEventListener('online', onOnline);
-
-    return () => {
-      window.removeEventListener('online', onOnline);
-    };
+    return () => window.removeEventListener('online', onOnline);
   }, [load]);
 
-  const prioritizedActivities = useMemo(
-    () => [...activities].sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50)),
-    [activities]
-  );
-
-  const topCoreSignals = useMemo(() => prioritizedActivities.slice(0, 3), [prioritizedActivities]);
-  const optionalSignals = useMemo(() => prioritizedActivities.slice(3, 5), [prioritizedActivities]);
-  const advancedSignals = useMemo(() => prioritizedActivities.slice(5), [prioritizedActivities]);
-
-  const captureScope = useMemo(() => {
-    if (fullContext) {
-      return prioritizedActivities;
+  useEffect(() => {
+    if (!profile || !profile.onboardingComplete || activities.length > 0 || seedTriedInBackground.current) {
+      return;
     }
-    if (showTopFive) {
-      return [...topCoreSignals, ...optionalSignals];
+
+    seedTriedInBackground.current = true;
+    void seedSignals(profile.focus, profile.checkinPreference, true);
+  }, [activities.length, profile, seedSignals]);
+
+  const quickSignals = useMemo(() => {
+    if (!profile || activities.length === 0) {
+      return [] as Activity[];
     }
-    return topCoreSignals;
-  }, [fullContext, prioritizedActivities, showTopFive, topCoreSignals, optionalSignals]);
+
+    const preferredNames = QUICK_SIGNAL_BY_FOCUS[profile.focus];
+    const byName = new Map(activities.map((activity) => [activity.name, activity]));
+
+    const preferred = preferredNames
+      .map((name) => byName.get(name))
+      .filter((activity): activity is Activity => Boolean(activity));
+
+    if (preferred.length >= 3) {
+      return preferred.slice(0, 3);
+    }
+
+    const remaining = [...activities]
+      .filter((activity) => !preferredNames.includes(activity.name))
+      .sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
+
+    return [...preferred, ...remaining].slice(0, 3);
+  }, [activities, profile]);
 
   const captureSignals = useMemo<NextMoveInputSignal[]>(
     () =>
-      captureScope.map((activity) => ({
+      quickSignals.map((activity) => ({
         name: activity.name,
         type: activity.type,
         booleanValue: activity.type === 'BOOLEAN' ? Boolean(values[activity.id]) : undefined,
         numericValue: activity.type === 'NUMERIC_0_10' ? Number(values[activity.id] ?? 0) : undefined,
         valenceHint: activity.valenceHint
       })),
-    [captureScope, values]
+    [quickSignals, values]
   );
 
-  const entriesToday = checkins.length;
-  const hasTodayEntry = entriesToday > 0;
-
   const submitCheckIn = async () => {
-    if (activities.length === 0) {
-      setError('Brak aktywnych sygnalow. Wybierz system przed check-inem.');
-      return;
-    }
-
     setError(null);
     setInfo(null);
 
     const clientEventId =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
 
-    const selectedIds = new Set(captureScope.map((activity) => activity.id));
+    const selectedIds = new Set(quickSignals.map((activity) => activity.id));
     const payload = {
       localDate,
       timestamp: new Date().toISOString(),
@@ -299,21 +382,19 @@ export function TodayClient({ onboardingMode = false }: Props) {
       energy,
       journal,
       clientEventId,
-      values: activities
+      values: quickSignals
         .filter((activity) => selectedIds.has(activity.id))
-        .map((activity) => {
-          if (activity.type === 'BOOLEAN') {
-            return {
-              activityId: activity.id,
-              booleanValue: Boolean(values[activity.id])
-            };
-          }
-
-          return {
-            activityId: activity.id,
-            numericValue: Number(values[activity.id] ?? 0)
-          };
-        })
+        .map((activity) =>
+          activity.type === 'BOOLEAN'
+            ? {
+                activityId: activity.id,
+                booleanValue: Boolean(values[activity.id])
+              }
+            : {
+                activityId: activity.id,
+                numericValue: Number(values[activity.id] ?? 0)
+              }
+        )
     };
 
     if (!navigator.onLine) {
@@ -334,6 +415,7 @@ export function TodayClient({ onboardingMode = false }: Props) {
           createdAt: new Date().toISOString()
         }
       ]);
+      setInfo(uiCopy.today.offlineSavedInfo);
     } else {
       const response = await fetch('/api/checkins', {
         method: 'POST',
@@ -342,8 +424,15 @@ export function TodayClient({ onboardingMode = false }: Props) {
       });
 
       if (!response.ok) {
-        const data = (await response.json()) as { error?: string };
-        setError(data.error ?? 'Nie udalo sie zapisac check-in.');
+        if (response.status === 401) {
+          await handleUnauthorized();
+          return;
+        }
+
+        const data = (await response.json().catch(() => ({ error: uiCopy.today.saveCheckinFallbackError }))) as {
+          error?: string;
+        };
+        setError(data.error ?? uiCopy.today.saveCheckinFallbackError);
         return;
       }
 
@@ -355,21 +444,24 @@ export function TodayClient({ onboardingMode = false }: Props) {
     setVariantIndex(0);
     setLastSignals(captureSignals);
 
-    const suggestion = buildNextMove({ mood, energy, signals: captureSignals, variantIndex: 0 });
+    const suggestion = buildNextMove({
+      mood,
+      energy,
+      signals: captureSignals,
+      variantIndex: 0
+    });
+
     setPendingMove(suggestion);
-    setDailyVerdict(
-      buildVerdict({
-        mood,
-        energy,
-        signals: captureSignals,
-        move: suggestion
-      })
-    );
     setCaptureOpen(false);
-    setInfo('Zamkniete. Jutro bedzie latwiejsze.');
+
+    if (profile && !profile.onboardingComplete) {
+      await saveProfile({ onboardingComplete: true });
+      setProfile((prev) => (prev ? { ...prev, onboardingComplete: true } : prev));
+      setWelcomeOpen(false);
+    }
   };
 
-  const finalizeDecision = async (decision: NextMoveRecord['decision'], skipReason?: NextMoveRecord['skipReason']) => {
+  const finalizeDecision = (decision: NextMoveRecord['decision'], skipReason?: NextMoveRecord['skipReason']) => {
     if (!pendingMove) {
       return;
     }
@@ -392,21 +484,14 @@ export function TodayClient({ onboardingMode = false }: Props) {
     if (decision === 'skipped') {
       writeActiveNextMove(null);
       setActiveMove(null);
-      setInfo('Decyzja odlozona. Jutro system podsunie nowy Next Move.');
     } else {
       writeActiveNextMove(record);
       setActiveMove(record);
-      setInfo('Next Move ustawione. Petla dnia zamknieta.');
     }
 
     setPendingMove(null);
     setShowSkipReasons(false);
-
-    if (onboardingMode) {
-      await fetch('/api/onboarding/complete', { method: 'POST' });
-      router.push('/today');
-      router.refresh();
-    }
+    setInfo(uiCopy.today.nextStepSetInfo);
   };
 
   const swapDecision = () => {
@@ -420,17 +505,29 @@ export function TodayClient({ onboardingMode = false }: Props) {
       variantIndex: nextVariant
     });
 
-    const scopeSignals = lastSignals.length > 0 ? lastSignals : captureSignals;
     setPendingMove(suggestion);
-    setDailyVerdict(
-      buildVerdict({
-        mood,
-        energy,
-        signals: scopeSignals,
-        move: suggestion
-      })
-    );
-    setInfo('Pokazalem wariant alternatywny.');
+  };
+
+  const runWelcome = async () => {
+    setOverlayBusy(true);
+
+    await saveProfile({
+      focus: selectedFocus,
+      checkinPreference: selectedPreference
+    });
+
+    await seedSignals(selectedFocus, selectedPreference, true);
+
+    setOverlayBusy(false);
+    setWelcomeDismissed(false);
+    setWelcomeOpen(false);
+    setCaptureOpen(true);
+  };
+
+  const handleSkipWelcome = () => {
+    setWelcomeDismissed(true);
+    setWelcomeOpen(false);
+    setCaptureOpen(true);
   };
 
   const renderSignalInput = (activity: Activity) => {
@@ -438,7 +535,6 @@ export function TodayClient({ onboardingMode = false }: Props) {
       return (
         <CheckboxTile
           checked={Boolean(values[activity.id])}
-          icon={ICON_LABEL[activity.iconKey ?? 'pulse'] ?? 'PT'}
           key={activity.id}
           onChange={(event) =>
             setValues((prev) => ({
@@ -446,16 +542,16 @@ export function TodayClient({ onboardingMode = false }: Props) {
               [activity.id]: event.target.checked
             }))
           }
-          subtitle={signalPurpose(activity)}
+          subtitle={uiCopy.today.quickCapture.booleanSubtitle}
           title={activity.name}
         />
       );
     }
 
     return (
-      <Card key={activity.id} subtitle={signalPurpose(activity)} title={activity.name}>
+      <Card key={activity.id} subtitle={uiCopy.today.quickCapture.rangeSubtitle} title={activity.name}>
         <RangeField
-          label="Intensywnosc"
+          label={uiCopy.today.quickCapture.rangeLabel}
           max={10}
           min={0}
           onChange={(event) =>
@@ -472,130 +568,131 @@ export function TodayClient({ onboardingMode = false }: Props) {
 
   return (
     <div className="stack-lg">
-      <section className="flow-track" aria-label="Flow decyzji">
-        <div className="flow-step is-active">
-          <span>1</span>
-          <div>
-            <strong>Capture (60s)</strong>
-            <small>Zbierz sygnaly.</small>
+      {welcomeOpen && (
+        <Card
+          className="welcome-overlay"
+          tone="elevated"
+          title={uiCopy.today.welcome.title}
+          subtitle={uiCopy.today.welcome.subtitle}
+        >
+          <div className="stack-sm">
+            <strong>{uiCopy.today.welcome.focusQuestion}</strong>
+            <div className="choice-row">
+              {(Object.keys(FOCUS_LABEL) as Focus[]).map((focus) => (
+                <button
+                  className={['choice-pill', selectedFocus === focus ? 'active' : ''].join(' ')}
+                  key={focus}
+                  onClick={() => setSelectedFocus(focus)}
+                  type="button"
+                >
+                  {FOCUS_LABEL[focus]}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-        <div className="flow-step is-active">
-          <span>2</span>
-          <div>
-            <strong>Decide (10s)</strong>
-            <small>Wybierz Next Move.</small>
-          </div>
-        </div>
-        <div className="flow-step">
-          <span>3</span>
-          <div>
-            <strong>Review</strong>
-            <small>Tydzien / miesiac / rok.</small>
-          </div>
-        </div>
-      </section>
 
-      {activities.length === 0 && (
-        <Banner tone="warning" title="Brak aktywnych sygnalow">
-          Wybierz system (2 min), aby uruchomic codzienny check-in. <Link href="/systems">Przejdz do Systemow</Link>
-        </Banner>
+          <div className="stack-sm">
+            <strong>{uiCopy.today.welcome.preferenceQuestion}</strong>
+            <div className="choice-row">
+              {(Object.keys(PREFERENCE_LABEL) as CheckinPreference[]).map((preference) => (
+                <button
+                  className={['choice-pill', selectedPreference === preference ? 'active' : ''].join(' ')}
+                  key={preference}
+                  onClick={() => setSelectedPreference(preference)}
+                  type="button"
+                >
+                  {PREFERENCE_LABEL[preference]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="inline-actions">
+            <Button onClick={() => void runWelcome()} size="lg" variant="primary" disabled={overlayBusy}>
+              {overlayBusy ? uiCopy.today.welcome.startCtaLoading : uiCopy.today.welcome.startCta}
+            </Button>
+            <Button onClick={handleSkipWelcome} size="md" variant="ghost" disabled={overlayBusy}>
+              {uiCopy.today.welcome.skipCta}
+            </Button>
+          </div>
+        </Card>
       )}
 
-      {!hasTodayEntry && !onboardingMode && (
-        <Banner tone="warning" title="Brakuje dzisiejszego wpisu">
-          Dodaj minimum 1 check-in, aby utrzymac streak.
+      {seedStatus === 'failed' && (
+        <Banner tone="info" title={uiCopy.today.seedFailed.title}>
+          {uiCopy.today.seedFailed.body}
         </Banner>
       )}
 
       {syncInfo && (
-        <Banner tone="info" title="Synchronizacja">
+        <Banner tone="info" title={uiCopy.today.banners.syncTitle}>
           {syncInfo}
         </Banner>
       )}
 
       {info && (
-        <Banner tone="success" title="Status">
+        <Banner tone="success" title={uiCopy.today.banners.statusTitle}>
           {info}
         </Banner>
       )}
 
       {error && (
-        <Banner tone="danger" title="Problem">
+        <Banner tone="danger" title={uiCopy.today.banners.errorTitle}>
           {error}
         </Banner>
       )}
 
-      {!onboardingMode && (
-        <Card tone="elevated" title="Status dnia" subtitle="Mini kontrola postepu bez wodotryskow.">
-          <div className="grid grid-3 compact-grid">
-            <StatTile label="Postep dzisiaj" value={`${Math.min(entriesToday, 3)}/3`} hint="Cel: 3 wpisy" />
-            <StatTile
-              label="Streak"
-              value={gamification?.currentStreak ?? 0}
-              hint={`Best ${gamification?.bestStreak ?? 0}`}
-              trend={(gamification?.currentStreak ?? 0) >= 7 ? 'up' : 'neutral'}
-            />
-            <StatTile label="Poziom" value={gamification?.level ?? 1} hint={`XP ${gamification?.totalXp ?? 0}`} />
-          </div>
-        </Card>
+      <Card tone="elevated" title={uiCopy.today.dayStatus.title} subtitle={uiCopy.today.dayStatus.subtitle}>
+        <div className="grid grid-3 compact-grid">
+          <StatTile
+            label={uiCopy.today.dayStatus.progressLabel}
+            value={`${Math.min(checkins.length, 3)}/3`}
+            hint={uiCopy.today.dayStatus.progressHint}
+          />
+          <StatTile
+            label={uiCopy.today.dayStatus.streakLabel}
+            value={gamification?.currentStreak ?? 0}
+            hint={`Najlepsza ${gamification?.bestStreak ?? 0}`}
+            trend={(gamification?.currentStreak ?? 0) >= 7 ? 'up' : 'neutral'}
+          />
+          <StatTile label={uiCopy.today.dayStatus.levelLabel} value={gamification?.level ?? 1} hint={`XP ${gamification?.totalXp ?? 0}`} />
+        </div>
+      </Card>
+
+      {Boolean(gamification && gamification.totalCheckIns >= 3) && (
+        <Banner tone="info" title={uiCopy.today.banners.tuneTitle}>
+          {uiCopy.today.banners.tuneBodyLead} <Link href="/systems">{uiCopy.today.banners.tuneBodyLink}</Link>
+        </Banner>
       )}
 
       <Card
         tone="elevated"
-        title="Warstwa wizualna: instrumenty precyzji"
-        subtitle="Interaktywny podglad. Przesun kursor po planszy i zmien motyw."
-      >
-        <DecisionVisualStage
-          energy={energy}
-          mood={mood}
-          signals={topCoreSignals.map((signal) => signal.name)}
-        />
-      </Card>
-
-      <Card
-        tone="elevated"
-        title="Capture: Dzisiaj liczy sie precyzja, nie heroizm."
-        subtitle="Tryb domyslny: 60 sekund. Full context to opcja, nie standard."
+        title={uiCopy.today.quickCapture.title}
+        subtitle={uiCopy.today.quickCapture.subtitle}
         actions={
-          <div className="mode-switch">
-            <button
-              className={fullContext ? '' : 'active'}
-              onClick={() => {
-                setFullContext(false);
-                setShowTopFive(false);
-              }}
-              type="button"
-            >
-              60 sekund
-            </button>
-            <button className={fullContext ? 'active' : ''} onClick={() => setFullContext(true)} type="button">
-              Full context
-            </button>
-          </div>
+          <Button onClick={() => setCaptureOpen((current) => !current)} size="sm" variant="secondary">
+            {captureOpen ? uiCopy.today.quickCapture.collapse : uiCopy.today.quickCapture.expand}
+          </Button>
         }
       >
         {!captureOpen ? (
-          <div className="stack-sm">
-            <p>Glowna akcja dnia: jeden szybki check-in i jedna decyzja na jutro.</p>
-            <Button onClick={() => setCaptureOpen(true)} size="lg" variant="primary">
-              Zrob check-in (60s)
-            </Button>
-          </div>
+          <Button onClick={() => setCaptureOpen(true)} size="lg" variant="primary">
+            {uiCopy.today.quickCapture.startButton}
+          </Button>
         ) : (
           <>
             <div className="grid grid-2">
               <RangeField
-                descriptor="1 = rozchwianie, 10 = stabilny nastroj"
-                label="Mood"
+                descriptor={uiCopy.today.quickCapture.moodDescriptor}
+                label={uiCopy.today.quickCapture.moodLabel}
                 max={10}
                 min={1}
                 onChange={(event) => setMood(Number(event.target.value))}
                 value={mood}
               />
               <RangeField
-                descriptor="1 = niski zasob, 10 = wysoka sprawczosc"
-                label="Energy"
+                descriptor={uiCopy.today.quickCapture.energyDescriptor}
+                label={uiCopy.today.quickCapture.energyLabel}
                 max={10}
                 min={1}
                 onChange={(event) => setEnergy(Number(event.target.value))}
@@ -603,41 +700,24 @@ export function TodayClient({ onboardingMode = false }: Props) {
               />
             </div>
 
-            <small>Zapisujesz sygnal. Nie ocene.</small>
+            <small>{uiCopy.today.quickCapture.note}</small>
 
-            <div className="stack-sm">
-              <strong>Top 3 sygnaly dnia</strong>
-              <div className="grid grid-3">{topCoreSignals.map((activity) => renderSignalInput(activity))}</div>
-            </div>
-
-            {!fullContext && optionalSignals.length > 0 && (
-              <div className="stack-sm">
-                <Button onClick={() => setShowTopFive((value) => !value)} size="sm" type="button" variant="ghost">
-                  {showTopFive ? 'Pokaz tylko top 3' : 'Dodaj sygnaly 4-5'}
-                </Button>
-                {showTopFive && <div className="grid grid-2">{optionalSignals.map((activity) => renderSignalInput(activity))}</div>}
-              </div>
-            )}
-
-            {fullContext && advancedSignals.length > 0 && (
-              <details className="capture-more" open>
-                <summary>Dodatkowy kontekst</summary>
-                <div className="grid grid-2">{advancedSignals.map((activity) => renderSignalInput(activity))}</div>
-              </details>
+            {quickSignals.length > 0 && (
+              <div className="grid grid-3">{quickSignals.map((activity) => renderSignalInput(activity))}</div>
             )}
 
             <label className="stack-sm">
-              Fakt / trigger / decyzja
+              {uiCopy.today.quickCapture.journalLabel}
               <input
                 maxLength={240}
                 onChange={(event) => setJournal(event.target.value)}
-                placeholder="np. Trigger: pozna kawa. Decyzja: bez kofeiny po 15:00."
+                placeholder={uiCopy.today.quickCapture.journalPlaceholder}
                 value={journal}
               />
             </label>
 
             <Button block onClick={submitCheckIn} size="lg" variant="primary">
-              Zapisz i pokaz Next Move
+              {uiCopy.today.quickCapture.saveButton}
             </Button>
           </>
         )}
@@ -645,46 +725,40 @@ export function TodayClient({ onboardingMode = false }: Props) {
 
       <Card
         tone="strong"
-        title="Decide: Next Move na jutro"
-        subtitle={pendingMove ? 'Po check-inie zawsze podejmujesz decyzje.' : 'Jedna decyzja. Jedna korekta.'}
+        title={uiCopy.today.nextStep.title}
+        subtitle={pendingMove ? uiCopy.today.nextStep.pendingSubtitle : uiCopy.today.nextStep.waitingSubtitle}
       >
         {pendingMove ? (
           <div className="stack">
             <div className="panel-subtle">
-              <p className="decision-title">{pendingMove.title}</p>
+              <p>
+                {uiCopy.today.nextStep.rationalePrefix} <strong>{pendingMove.title}</strong> {uiCopy.today.nextStep.rationaleSuffix}
+              </p>
+              <small>{uiCopy.today.nextStep.hypothesisHint}</small>
               <small>
-                Dlaczego: {pendingMove.why} (confidence {pendingMove.confidence}% • lag {pendingMove.lag}d)
+                {uiCopy.today.nextStep.minimalVariantPrefix} <strong>{pendingMove.minimalVariant}</strong>
               </small>
-              <small>Wariant minimalny (10%): {pendingMove.minimalVariant}</small>
             </div>
 
             <div className="decision-actions">
-              <Button onClick={() => void finalizeDecision('accepted')} variant="primary">
-                Biore
+              <Button onClick={() => finalizeDecision('accepted')} variant="primary">
+                {uiCopy.today.nextStep.accept}
               </Button>
               <Button onClick={swapDecision} variant="secondary">
-                Zamien
+                {uiCopy.today.nextStep.swap}
               </Button>
               <Button onClick={() => setShowSkipReasons(true)} variant="ghost">
-                Nie dzis
+                {uiCopy.today.nextStep.skip}
               </Button>
             </div>
 
             {showSkipReasons && (
-              <div className="stack-sm">
-                <small>Dlaczego nie dzis?</small>
-                <div className="decision-actions">
-                  {SKIP_REASON_OPTIONS.map((option) => (
-                    <Button
-                      key={option.id}
-                      onClick={() => void finalizeDecision('skipped', option.id)}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
+              <div className="decision-actions">
+                {SKIP_REASON_OPTIONS.map((option) => (
+                  <Button key={option.id} onClick={() => finalizeDecision('skipped', option.id)} size="sm" variant="ghost">
+                    {option.label}
+                  </Button>
+                ))}
               </div>
             )}
           </div>
@@ -694,54 +768,31 @@ export function TodayClient({ onboardingMode = false }: Props) {
               <strong>{activeMove.title}</strong>
             </p>
             <small>{activeMove.minimalVariant}</small>
-            <small>Next Move ustawione.</small>
           </div>
         ) : (
-          <div className="empty-state">
-            Brak aktywnego Next Move. Po najblizszym check-inie system zaproponuje jedna korekte.
-          </div>
-        )}
-
-        {dailyVerdict && (
-          <div className={`daily-verdict daily-verdict--${dailyVerdict.level}`}>
-            <p>{dailyVerdict.line}</p>
-            <small>One move: {dailyVerdict.oneMove}</small>
-            <small>Minimal variant: {dailyVerdict.minimalVariant}</small>
-          </div>
+          <div className="empty-state">{uiCopy.today.nextStep.emptyState}</div>
         )}
       </Card>
 
-      {!onboardingMode && (
-        <Card tone="elevated" title="Review: historia dnia" subtitle="Progressive disclosure. Tylko podglad.">
-          <details>
-            <summary>Zobacz historie check-inow</summary>
-            {checkins.length === 0 ? (
-              <div className="empty-state">Brak wpisow dzisiaj.</div>
-            ) : (
-              <div className="timeline">
-                {checkins
-                  .slice()
-                  .reverse()
-                  .map((entry) => (
-                    <div className="timeline-item" key={entry.id}>
-                      <p>
-                        <strong>{formatTime(entry.createdAt)}</strong> • mood {entry.mood} • energy {entry.energy}
-                      </p>
-                      {entry.journal && <small>{entry.journal}</small>}
-                    </div>
-                  ))}
-              </div>
-            )}
-          </details>
-
-          <div className="review-cta-row">
-            <small>Nie optymalizujesz dnia. Stabilizujesz tydzien.</small>
-            <Link className="review-link" href="/review">
-              Otworz Review 2x / 5x / 10x
-            </Link>
+      <Card tone="elevated" title={uiCopy.today.history.title} subtitle={uiCopy.today.history.subtitle}>
+        {checkins.length === 0 ? (
+          <div className="empty-state">{uiCopy.today.history.emptyState}</div>
+        ) : (
+          <div className="timeline">
+            {checkins
+              .slice()
+              .reverse()
+              .map((entry) => (
+                <div className="timeline-item" key={entry.id}>
+                  <p>
+                    <strong>{formatTime(entry.createdAt)}</strong> - mood {entry.mood} - energy {entry.energy}
+                  </p>
+                  {entry.journal && <small>{entry.journal}</small>}
+                </div>
+              ))}
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
     </div>
   );
 }

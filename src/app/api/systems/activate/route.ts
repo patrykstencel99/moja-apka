@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { requireApiUser } from '@/lib/auth';
+import { apiCopy } from '@/lib/copy';
 import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { STARTER_SYSTEMS } from '@/lib/starter-packs';
@@ -19,13 +20,13 @@ export async function POST(request: NextRequest) {
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError('Niepoprawne dane systemu', 400);
+      return jsonError(apiCopy.systems.invalidData, 400);
     }
 
     const system = STARTER_SYSTEMS.find((item) => item.id === parsed.data.systemId);
 
     if (!system) {
-      return jsonError('Nie znaleziono systemu', 404);
+      return jsonError(apiCopy.systems.notFound, 404);
     }
 
     const signals = parsed.data.includeOptional
@@ -61,6 +62,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, activated: signals.length, systemId: system.id });
   } catch {
-    return jsonError('Nie udalo sie aktywowac systemu', 500);
+    return jsonError(apiCopy.systems.activationFailed, 500);
   }
 }

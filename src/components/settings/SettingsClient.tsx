@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readExperiments, readString } from '@/lib/state/local-storage';
 
 export function SettingsClient() {
@@ -14,7 +15,7 @@ export function SettingsClient() {
     const response = await fetch('/api/checkins?from=2000-01-01&to=2100-01-01');
 
     if (!response.ok) {
-      setMessage('Nie udalo sie pobrac danych do exportu.');
+      setMessage(uiCopy.settings.exportError);
       return;
     }
 
@@ -37,7 +38,7 @@ export function SettingsClient() {
     anchor.click();
 
     URL.revokeObjectURL(url);
-    setMessage('Backup wyeksportowany.');
+    setMessage(uiCopy.settings.exportSuccess);
   };
 
   const logout = async () => {
@@ -49,28 +50,28 @@ export function SettingsClient() {
   return (
     <div className="stack-lg">
       {message && (
-        <Banner tone="success" title="Status">
+        <Banner tone="success" title={uiCopy.settings.statusTitle}>
           {message}
         </Banner>
       )}
 
-      <Card tone="elevated" title="Dostep" subtitle="Aktualny status logowania.">
-        <p>Logowanie dziala przez email + haslo. Pierwsze konto zakladasz na `/login`.</p>
+      <Card tone="elevated" title={uiCopy.settings.accessTitle} subtitle={uiCopy.settings.accessSubtitle}>
+        <p>{uiCopy.settings.accessBody}</p>
       </Card>
 
-      <Card tone="elevated" title="Backup i export" subtitle="Pobierz snapshot danych lokalnych i check-inow.">
+      <Card tone="elevated" title={uiCopy.settings.backupTitle} subtitle={uiCopy.settings.backupSubtitle}>
         <Button onClick={() => void exportBackup()} variant="secondary">
-          Export JSON
+          {uiCopy.settings.backupButton}
         </Button>
       </Card>
 
-      <Card tone="elevated" title="Prywatnosc" subtitle="Standard startup privacy.">
-        <p>Produkt nie jest narzedziem medycznym. Insighty sa hipotezami, nie przyczynowoscia.</p>
+      <Card tone="elevated" title={uiCopy.settings.privacyTitle} subtitle={uiCopy.settings.privacySubtitle}>
+        <p>{uiCopy.settings.privacyBody}</p>
       </Card>
 
-      <Card tone="default" title="Sesja" subtitle="Wylogowanie resetuje local flow na tym urzadzeniu.">
+      <Card tone="default" title={uiCopy.settings.sessionTitle} subtitle={uiCopy.settings.sessionSubtitle}>
         <Button onClick={() => void logout()} variant="danger">
-          Wyloguj i wyczysc sesje
+          {uiCopy.settings.logoutButton}
         </Button>
       </Card>
     </div>

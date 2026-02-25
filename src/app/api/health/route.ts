@@ -7,7 +7,13 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const status = await resolveAuthStatus();
 
-  return NextResponse.json(status, {
-    status: status.mode === 'setup' ? 503 : 200
-  });
+  return NextResponse.json(
+    {
+      ok: status.mode !== 'setup',
+      auth: status
+    },
+    {
+      status: status.mode === 'setup' ? 503 : 200
+    }
+  );
 }

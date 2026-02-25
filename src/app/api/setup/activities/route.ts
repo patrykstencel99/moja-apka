@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { decorateActivity } from '@/lib/activity-meta';
+import { apiCopy } from '@/lib/copy';
 import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { activitySchema } from '@/lib/validators';
@@ -21,7 +22,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ activities: activities.map((activity) => decorateActivity(activity)) });
   } catch {
-    return jsonError('Unauthorized', 401);
+    return jsonError(apiCopy.common.unauthorized, 401);
   }
 }
 
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     const parsed = activitySchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError('Niepoprawne dane aktywnosci', 400);
+      return jsonError(apiCopy.activities.invalidData, 400);
     }
 
     const activity = await prisma.activityDefinition.create({
@@ -49,13 +50,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'UNAUTHORIZED') {
-        return jsonError('Unauthorized', 401);
+        return jsonError(apiCopy.common.unauthorized, 401);
       }
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return jsonError('Aktywnosc o tej nazwie juz istnieje', 409);
+      return jsonError(apiCopy.activities.alreadyExists, 409);
     }
 
-    return jsonError('Nie udalo sie zapisac aktywnosci', 500);
+    return jsonError(apiCopy.activities.saveFailed, 500);
   }
 }

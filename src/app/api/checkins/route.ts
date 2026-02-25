@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { decorateActivity } from '@/lib/activity-meta';
+import { apiCopy } from '@/lib/copy';
 import { formatLocalDate } from '@/lib/date';
 import { updateGamificationAfterCheckIn } from '@/lib/gamification';
 import { jsonError } from '@/lib/http';
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const range = parseDateRange(new URL(request.url));
 
     if (!range) {
-      return jsonError('Parametry from i to sa wymagane w formacie YYYY-MM-DD', 400);
+      return jsonError(apiCopy.checkins.invalidRange, 400);
     }
 
     const checkIns = await prisma.checkIn.findMany({
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       todayLocalDate: todayLocal
     });
   } catch {
-    return jsonError('Unauthorized', 401);
+    return jsonError(apiCopy.common.unauthorized, 401);
   }
 }
 
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     const parsed = checkInSchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError('Niepoprawne dane wpisu', 400);
+      return jsonError(apiCopy.checkins.invalidPayload, 400);
     }
 
     const payload = parsed.data;
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (activities.length !== activityIds.length) {
-      return jsonError('Wykryto nieprawidlowe aktywnosci', 400);
+      return jsonError(apiCopy.checkins.invalidActivities, 400);
     }
 
     const activityMap = new Map(activities.map((a) => [a.id, a]));
@@ -125,30 +126,32 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      await tx.checkInActivityValue.createMany({
-        data: payload.values.map((value) => {
-          const activity = activityMap.get(value.activityId);
-          if (!activity) {
-            throw new Error('INVALID_ACTIVITY');
-          }
+      if (payload.values.length > 0) {
+        await tx.checkInActivityValue.createMany({
+          data: payload.values.map((value) => {
+            const activity = activityMap.get(value.activityId);
+            if (!activity) {
+              throw new Error('INVALID_ACTIVITY');
+            }
 
-          if (activity.type === 'BOOLEAN') {
+            if (activity.type === 'BOOLEAN') {
+              return {
+                checkInId: created.id,
+                activityId: value.activityId,
+                booleanValue: value.booleanValue ?? false,
+                numericValue: null
+              };
+            }
+
             return {
               checkInId: created.id,
               activityId: value.activityId,
-              booleanValue: value.booleanValue ?? false,
-              numericValue: null
+              booleanValue: null,
+              numericValue: value.numericValue ?? 0
             };
-          }
-
-          return {
-            checkInId: created.id,
-            activityId: value.activityId,
-            booleanValue: null,
-            numericValue: value.numericValue ?? 0
-          };
-        })
-      });
+          })
+        });
+      }
 
       return created;
     });
@@ -159,6 +162,15 @@ export async function POST(request: NextRequest) {
       createdAt,
       userTimeZone: user.timezone
     });
+
+    if (!user.onboardingComplete) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          onboardingComplete: true
+        }
+      });
+    }
 
     return NextResponse.json(
       {
@@ -173,9 +185,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return jsonError('Unauthorized', 401);
+      return jsonError(apiCopy.common.unauthorized, 401);
     }
 
-    return jsonError('Nie udalo sie zapisac wpisu', 500);
+    return jsonError(apiCopy.checkins.saveFailed, 500);
   }
 }

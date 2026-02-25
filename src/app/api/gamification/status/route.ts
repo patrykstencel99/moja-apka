@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
+import { apiCopy } from '@/lib/copy';
 import { getGamificationStatus } from '@/lib/gamification';
 import { jsonError } from '@/lib/http';
 
@@ -19,8 +20,8 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return jsonError('Unauthorized', 401);
+      return jsonError(apiCopy.common.unauthorized, 401);
     }
-    return jsonError('Nie udalo sie pobrac statusu grywalizacji', 500);
+    return jsonError(apiCopy.gamification.statusFailed, 500);
   }
 }

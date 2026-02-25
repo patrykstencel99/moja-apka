@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
 import { Card } from '@/components/ui/Card';
+import { uiCopy } from '@/lib/copy';
 import { readExperiments } from '@/lib/state/local-storage';
 
 type Insight = {
@@ -133,12 +134,12 @@ function nextTestLine(report: ReportResponse | null) {
     return 'Eksperyment tygodnia: zrob jeden check-in dziennie i testuj jedna mala korekte poranka.';
   }
   if (gain && risk) {
-    return `Next test: jutro ogranicz "${risk.factor}" i powtorz "${gain.factor}" w wersji minimalnej.`;
+    return `Jutro ogranicz "${risk.factor}" i powtorz "${gain.factor}" w wersji minimalnej.`;
   }
   if (risk) {
-    return `Next test: jutro postaw jedna bariere na "${risk.factor}".`;
+    return `Jutro postaw jedna bariere na "${risk.factor}".`;
   }
-  return `Next test: jutro utrwal "${gain?.factor}" jako staly krok poranny.`;
+  return `Jutro utrwal "${gain?.factor}" jako staly krok poranny.`;
 }
 
 function mostFrequentTrigger(checkins: CheckIn[]) {
@@ -267,7 +268,7 @@ export function ReviewClient() {
       ]);
 
       if (!weeklyRes.ok || !monthlyRes.ok || !weekRes.ok || !monthRes.ok || !yearRes.ok) {
-        setError('Nie udalo sie pobrac danych review.');
+        setError(uiCopy.review.loadError);
         return;
       }
 
@@ -338,56 +339,55 @@ export function ReviewClient() {
   return (
     <div className="stack-lg">
       {error && (
-        <Banner tone="danger" title="Blad Review">
+        <Banner tone="danger" title={uiCopy.review.errorTitle}>
           {error}
         </Banner>
       )}
 
       <Card
         tone="strong"
-        title="Review cockpit: 2x / 5x / 10x"
-        subtitle="Domyslnie dzialasz w 1x (Dzien). Tu tylko potwierdzasz wzorce."
+        title={uiCopy.review.cockpitTitle}
+        subtitle={uiCopy.review.cockpitSubtitle}
         actions={
           <div className="mode-switch">
             <button className={period === 'week' ? 'active' : ''} onClick={() => setPeriod('week')} type="button">
-              2x Tydzien
+              {uiCopy.review.periodWeek}
             </button>
             <button className={period === 'month' ? 'active' : ''} onClick={() => setPeriod('month')} type="button">
-              5x Miesiac
+              {uiCopy.review.periodMonth}
             </button>
             <button className={period === 'year' ? 'active' : ''} onClick={() => setPeriod('year')} type="button">
-              10x Rok
+              {uiCopy.review.periodYear}
             </button>
           </div>
         }
       >
         {weeklyReport?.insufficientData ? (
-          <Banner tone="info" title="Malo danych, ale jest wartosc">
-            Eksperyment tygodnia: wybierz 1 sygnal ryzyka i 1 sygnal ochronny. Co zbierac dalej: codzienny mood,
-            energy i 3 sygnaly core przez co najmniej 7 dni.
+          <Banner tone="info" title={uiCopy.review.lowDataTitle}>
+            {uiCopy.review.lowDataBody}
           </Banner>
         ) : (
           <div className="grid grid-2">
-            <Card title="Top gain" subtitle="To hipoteza. Ale dobra hipoteza oszczedza tydzien.">
-              <p>{weeklyGain ? weeklyGain.factor : 'Brak top gain w tym oknie.'}</p>
-              <small>{weeklyGain ? `Lag ${weeklyGain.lag} • confidence ${weeklyGain.confidence}%` : 'Nie przyczynowosc. Kierunek.'}</small>
+            <Card title={uiCopy.review.topGainTitle} subtitle={uiCopy.review.topGainSubtitle}>
+              <p>{weeklyGain ? weeklyGain.factor : uiCopy.review.noTopGain}</p>
+              <small>{weeklyGain ? `Lag ${weeklyGain.lag} • pewnosc ${weeklyGain.confidence}%` : uiCopy.review.noCausalityHint}</small>
             </Card>
-            <Card title="Top risk" subtitle="Nie przyczynowosc. Kierunek.">
-              <p>{weeklyRisk ? weeklyRisk.factor : 'Brak top risk w tym oknie.'}</p>
-              <small>{weeklyRisk ? `Lag ${weeklyRisk.lag} • confidence ${weeklyRisk.confidence}%` : 'Monitoruj 3 sygnaly core.'}</small>
+            <Card title={uiCopy.review.topRiskTitle} subtitle={uiCopy.review.topRiskSubtitle}>
+              <p>{weeklyRisk ? weeklyRisk.factor : uiCopy.review.noTopRisk}</p>
+              <small>{weeklyRisk ? `Lag ${weeklyRisk.lag} • pewnosc ${weeklyRisk.confidence}%` : uiCopy.review.monitorCoreHint}</small>
             </Card>
           </div>
         )}
 
-        <Banner tone="warning" title="Next test">
+        <Banner tone="warning" title={uiCopy.review.nextTestTitle}>
           {weeklyAction}
         </Banner>
       </Card>
 
       {period === 'week' && (
-        <Card tone="elevated" title="Tydzien (2x)" subtitle="Nie optymalizujesz dnia. Stabilizujesz tydzien.">
+        <Card tone="elevated" title={uiCopy.review.weekCardTitle} subtitle={uiCopy.review.weekCardSubtitle}>
           <div className="review-trend">
-            <svg aria-label="Energy trend" viewBox="0 0 700 180">
+            <svg aria-label="Trend energii" viewBox="0 0 700 180">
               <defs>
                 <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#1f6b43" stopOpacity="0.26" />
@@ -397,7 +397,7 @@ export function ReviewClient() {
               <path d={weekTrend.path} fill="none" stroke="#1f6b43" strokeWidth="3" />
               {weekTrend.points.map((point, index) => (
                 <circle cx={point.x} cy={point.y} key={`${point.x}-${index}`} r="4.8">
-                  <title>{`Energy: ${point.value}`}</title>
+                  <title>{`Energia: ${point.value}`}</title>
                 </circle>
               ))}
             </svg>
@@ -410,10 +410,10 @@ export function ReviewClient() {
                 <article className="week-cell" key={day.key}>
                   <strong>{day.label}</strong>
                   <div className={`heat-chip ${avg ? heatClass(avg.mood) : 'heat-empty'}`}>
-                    Mood {avg ? avg.mood : '-'}
+                    {uiCopy.review.moodLabel} {avg ? avg.mood : '-'}
                   </div>
                   <div className={`heat-chip ${avg ? heatClass(avg.energy) : 'heat-empty'}`}>
-                    Energy {avg ? avg.energy : '-'}
+                    {uiCopy.review.energyLabel} {avg ? avg.energy : '-'}
                   </div>
                 </article>
               );
@@ -421,26 +421,26 @@ export function ReviewClient() {
           </div>
 
           <div className="grid grid-2">
-            <Card title="Top 1 Gain">
-              <p>{weeklyGain?.factor ?? 'Brak sygnalu gain. Zbieraj kolejne dni.'}</p>
+            <Card title={uiCopy.review.topOneGain}>
+              <p>{weeklyGain?.factor ?? uiCopy.review.noGainWeek}</p>
             </Card>
-            <Card title="Top 1 Risk">
-              <p>{weeklyRisk?.factor ?? 'Brak sygnalu risk. Dodaj jeden trigger binarny.'}</p>
+            <Card title={uiCopy.review.topOneRisk}>
+              <p>{weeklyRisk?.factor ?? uiCopy.review.noRiskWeek}</p>
             </Card>
           </div>
 
           <div className="panel-subtle">
-            <strong>Eksperyment na przyszly tydzien (1)</strong>
+            <strong>{uiCopy.review.weekExperimentTitle}</strong>
             <small>{weeklyAction}</small>
             <Link className="review-link" href="/experiments">
-              Ustaw eksperyment na ten tydzien
+              {uiCopy.review.weekExperimentLink}
             </Link>
           </div>
         </Card>
       )}
 
       {period === 'month' && (
-        <Card tone="elevated" title="Miesiac (5x)" subtitle="Trajektoria: stabilne vs niestabilne dni.">
+        <Card tone="elevated" title={uiCopy.review.monthCardTitle} subtitle={uiCopy.review.monthCardSubtitle}>
           <div className="month-grid">
             {monthGrid.cells.map((cell, index) =>
               cell.empty ? (
@@ -453,16 +453,16 @@ export function ReviewClient() {
             )}
           </div>
           <small>
-            Najczestszy trigger miesiaca: <strong>{topFactor(monthlyReport, 'negative')?.factor ?? monthGrid.trigger}</strong>
+            {uiCopy.review.monthTriggerLabel} <strong>{topFactor(monthlyReport, 'negative')?.factor ?? monthGrid.trigger}</strong>
           </small>
           <Link className="review-link" href="/experiments">
-            Wybierz 1 zasade na kolejny miesiac
+            {uiCopy.review.monthLink}
           </Link>
         </Card>
       )}
 
       {period === 'year' && (
-        <Card tone="elevated" title="Rok (10x)" subtitle="Kompas strategiczny, nie ekran codziennej optymalizacji.">
+        <Card tone="elevated" title={uiCopy.review.yearCardTitle} subtitle={uiCopy.review.yearCardSubtitle}>
           <div className="year-grid">
             {yearStats.months.map((month) => (
               <article className="year-cell" key={month.month}>
@@ -473,11 +473,15 @@ export function ReviewClient() {
           </div>
 
           <div className="panel-subtle">
-            <strong>Rok to 12 iteracji. Dekada to zmiana systemu.</strong>
-            <small>Iteracje eksperymentow: {yearStats.experimentsCount}</small>
-            <small>Powroty na tor po spadku: {yearStats.recoveries}</small>
+            <strong>{uiCopy.review.yearSummaryTitle}</strong>
+            <small>
+              {uiCopy.review.yearExperimentsLabel} {yearStats.experimentsCount}
+            </small>
+            <small>
+              {uiCopy.review.yearRecoveriesLabel} {yearStats.recoveries}
+            </small>
             <Link className="review-link" href="/today">
-              Wroc do Dzisiaj
+              {uiCopy.review.backToToday}
             </Link>
           </div>
         </Card>

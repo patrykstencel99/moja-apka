@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import { PwaRegister } from '@/components/PwaRegister';
+import { uiCopy } from '@/lib/copy';
 
 export const metadata: Metadata = {
   title: 'PatternFinder',
-  description: 'Operacyjny cockpit decyzji: jedna petla dziennie, jedna korekta jutro.',
+  description: uiCopy.meta.description,
   manifest: '/manifest.webmanifest'
 };
 

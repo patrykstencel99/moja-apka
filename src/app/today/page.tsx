@@ -1,5 +1,6 @@
 import { NavBar } from '@/components/NavBar';
 import { TodayClient } from '@/components/TodayClient';
+import { uiCopy } from '@/lib/copy';
 
 export default function TodayPage() {
   return (
@@ -7,11 +8,9 @@ export default function TodayPage() {
       <NavBar />
       <section className="panel">
         <header className="hero-header">
-          <span className="eyebrow">Capture - Decide - Review</span>
-          <h1>Operacyjny cockpit decyzji: jedna petla dziennie, jedna korekta jutro.</h1>
-          <p className="hero-support">
-            Dzien (1x) to jedyny ekran akcji. Zbierasz sygnaly, zamykasz Next Move, wracasz jutro.
-          </p>
+          <span className="eyebrow">{uiCopy.pages.today.eyebrow}</span>
+          <h1>{uiCopy.pages.today.title}</h1>
+          <p className="hero-support">{uiCopy.pages.today.support}</p>
         </header>
         <TodayClient />
       </section>

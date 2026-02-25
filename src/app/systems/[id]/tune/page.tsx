@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { NavBar } from '@/components/NavBar';
 import { SystemTuneClient } from '@/components/systems/SystemTuneClient';
+import { uiCopy } from '@/lib/copy';
 import { STARTER_SYSTEMS } from '@/lib/starter-packs';
 
 type Props = {
@@ -22,9 +23,9 @@ export default function SystemTunePage({ params }: Props) {
       <NavBar />
       <section className="panel">
         <header className="hero-header">
-          <span className="eyebrow">Doprecyzowanie</span>
+          <span className="eyebrow">{uiCopy.pages.systemTune.eyebrow}</span>
           <h1>{system.name}</h1>
-          <p className="hero-support">Dostosuj typ i cadence sygnalow do realnego rytmu dnia.</p>
+          <p className="hero-support">{uiCopy.pages.systemTune.support}</p>
         </header>
         <SystemTuneClient system={system} />
       </section>

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+import { uiCopy } from '@/lib/copy';
+
 export function NavBar() {
   const pathname = usePathname();
 
@@ -14,35 +16,35 @@ export function NavBar() {
         <span className="brand-mark">PF</span>
         <div>
           <div className="brand-title">PatternFinder</div>
-          <div className="brand-subtitle">Operacyjny cockpit decyzji: 1 petla dziennie</div>
+          <div className="brand-subtitle">{uiCopy.nav.brandSubtitle}</div>
         </div>
       </div>
 
-      <div className="nav-links" role="navigation" aria-label="Primary navigation">
+      <div className="nav-links" role="navigation" aria-label={uiCopy.nav.primaryAriaLabel}>
         <Link className={isPrimaryActive('/today') ? 'active' : ''} href="/today">
-          Dzien (1x)
+          {uiCopy.nav.today}
         </Link>
         <Link className={isPrimaryActive('/systems') ? 'active' : ''} href="/systems">
-          Systems
+          {uiCopy.nav.systems}
         </Link>
         <Link className={isPrimaryActive('/review') ? 'active' : ''} href="/review">
-          Review (2x/5x/10x)
+          {uiCopy.nav.review}
         </Link>
       </div>
 
       <div className="nav-secondary-wrap">
         <details className="nav-secondary">
-          <summary>Menu</summary>
+          <summary>{uiCopy.nav.menu}</summary>
           <div className="nav-secondary-menu">
             <Link className={isPrimaryActive('/experiments') ? 'active' : ''} href="/experiments">
-              Eksperymenty
+              {uiCopy.nav.experiments}
             </Link>
             <Link className={isPrimaryActive('/settings') ? 'active' : ''} href="/settings">
-              Ustawienia
+              {uiCopy.nav.settings}
             </Link>
           </div>
         </details>
-        <span className="nav-mode">Performance Builder</span>
+        <span className="nav-mode">{uiCopy.nav.modeLabel}</span>
       </div>
     </nav>
   );

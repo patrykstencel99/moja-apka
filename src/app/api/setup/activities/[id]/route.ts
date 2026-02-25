@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { decorateActivity } from '@/lib/activity-meta';
+import { apiCopy } from '@/lib/copy';
 import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { activityUpdateSchema } from '@/lib/validators';
@@ -20,7 +21,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const parsed = activityUpdateSchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError('Niepoprawne dane', 400);
+      return jsonError(apiCopy.activities.invalidUpdateData, 400);
     }
 
     const existing = await prisma.activityDefinition.findFirst({
@@ -31,7 +32,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return jsonError('Nie znaleziono aktywnosci', 404);
+      return jsonError(apiCopy.activities.notFound, 404);
     }
 
     const activity = await prisma.activityDefinition.update({
@@ -53,9 +54,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ activity: decorateActivity(activity) });
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return jsonError('Unauthorized', 401);
+      return jsonError(apiCopy.common.unauthorized, 401);
     }
-    return jsonError('Blad aktualizacji aktywnosci', 500);
+    return jsonError(apiCopy.activities.updateFailed, 500);
   }
 }
 
@@ -71,7 +72,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
 
     if (!existing) {
-      return jsonError('Nie znaleziono aktywnosci', 404);
+      return jsonError(apiCopy.activities.notFound, 404);
     }
 
     await prisma.activityDefinition.update({
@@ -82,8 +83,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     if (error instanceof Error && error.message === 'UNAUTHORIZED') {
-      return jsonError('Unauthorized', 401);
+      return jsonError(apiCopy.common.unauthorized, 401);
     }
-    return jsonError('Blad usuwania aktywnosci', 500);
+    return jsonError(apiCopy.activities.deleteFailed, 500);
   }
 }

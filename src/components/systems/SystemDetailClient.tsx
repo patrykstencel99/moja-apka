@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readStringArray, writeStringArray } from '@/lib/state/local-storage';
 import type { StarterSystem } from '@/types/domain';
 
@@ -32,7 +33,7 @@ export function SystemDetailClient({ system }: Props) {
     setIsLoading(false);
 
     if (!response.ok) {
-      setError('Nie udalo sie aktywowac systemu.');
+      setError(uiCopy.systemDetail.activateError);
       return;
     }
 
@@ -40,35 +41,38 @@ export function SystemDetailClient({ system }: Props) {
     const next = [system.id, ...active.filter((id) => id !== system.id)].slice(0, 2);
     writeStringArray(STORAGE_KEYS.activeSystems, next);
 
-    setInfo('System aktywowany.');
+    setInfo(uiCopy.systemDetail.activated);
   };
 
   return (
     <div className="stack-lg">
       {(error || info) && (
-        <Banner tone={error ? 'danger' : 'success'} title={error ? 'Problem' : 'Status'}>
+        <Banner
+          tone={error ? 'danger' : 'success'}
+          title={error ? uiCopy.systemDetail.bannerProblem : uiCopy.systemDetail.bannerStatus}
+        >
           {error ?? info}
         </Banner>
       )}
 
-      <Card tone="elevated" title={system.name} subtitle="Co ten system stabilizuje">
+      <Card tone="elevated" title={system.name} subtitle={uiCopy.systemDetail.impactSubtitle}>
         <p>{system.outcome}</p>
       </Card>
 
-      <Card tone="elevated" title="Core sygnaly" subtitle="3 sygnaly bazowe z jasna definicja zaliczenia.">
+      <Card tone="elevated" title={uiCopy.systemDetail.coreTitle} subtitle={uiCopy.systemDetail.coreSubtitle}>
         <div className="stack">
           {system.coreSignals.map((signal) => (
-            <Card key={signal.name} subtitle={`Kiedy: ${signal.cadence}`} title={signal.name}>
+            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${signal.cadence}`} title={signal.name}>
               <small>{signal.definition}</small>
             </Card>
           ))}
         </div>
       </Card>
 
-      <Card tone="default" title="Opcjonalne sygnaly" subtitle="2-4 sygnaly do rozszerzenia po 7 dniach.">
+      <Card tone="default" title={uiCopy.systemDetail.advancedTitle} subtitle={uiCopy.systemDetail.advancedSubtitle}>
         <div className="stack">
           {system.advancedSignals.map((signal) => (
-            <Card key={signal.name} subtitle={`Kiedy: ${signal.cadence}`} title={signal.name}>
+            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${signal.cadence}`} title={signal.name}>
               <small>{signal.definition}</small>
             </Card>
           ))}
@@ -77,10 +81,10 @@ export function SystemDetailClient({ system }: Props) {
 
       <div className="inline-actions">
         <Button onClick={() => void activate()} size="lg" variant="primary" disabled={isLoading}>
-          {isLoading ? 'Aktywacja...' : 'Aktywuj system'}
+          {isLoading ? uiCopy.systemDetail.activateLoading : uiCopy.systemDetail.activateButton}
         </Button>
         <Link className="inline-link" href={`/systems/${system.id}/tune`}>
-          Przejdz do dopracowania
+          {uiCopy.systemDetail.tuneLink}
         </Link>
       </div>
     </div>

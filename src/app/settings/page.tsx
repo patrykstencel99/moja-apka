@@ -1,5 +1,6 @@
 import { NavBar } from '@/components/NavBar';
 import { SettingsClient } from '@/components/settings/SettingsClient';
+import { uiCopy } from '@/lib/copy';
 
 export default function SettingsPage() {
   return (
@@ -7,9 +8,9 @@ export default function SettingsPage() {
       <NavBar />
       <section className="panel">
         <header className="hero-header">
-          <span className="eyebrow">Secondary</span>
-          <h1>Ustawienia</h1>
-          <p className="hero-support">Sesja, backup, export i prywatnosc.</p>
+          <span className="eyebrow">{uiCopy.pages.settings.eyebrow}</span>
+          <h1>{uiCopy.pages.settings.title}</h1>
+          <p className="hero-support">{uiCopy.pages.settings.support}</p>
         </header>
         <SettingsClient />
       </section>

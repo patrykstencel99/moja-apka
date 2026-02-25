@@ -5,25 +5,65 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/Button';
 import { Banner } from '@/components/ui/Banner';
+import { uiCopy } from '@/lib/copy';
+
+type SetupInfo = {
+  code: string;
+  title: string;
+  message: string;
+  steps: string[];
+};
+
+type AuthStatusPayload =
+  | {
+      mode: 'login' | 'register';
+      hasUsers: boolean;
+      warnings?: string[];
+    }
+  | {
+      mode: 'setup';
+      hasUsers: false;
+      setup: SetupInfo;
+    };
 
 export function LoginClient() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [hasUsers, setHasUsers] = useState<boolean | null>(null);
+  const [mode, setMode] = useState<'loading' | 'login' | 'register' | 'setup'>('loading');
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [setupInfo, setSetupInfo] = useState<SetupInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = async () => {
-    const response = await fetch('/api/auth/status');
-    if (!response.ok) {
-      setHasUsers(true);
+    setMode('loading');
+    setWarnings([]);
+    setSetupInfo(null);
+
+    const response = await fetch('/api/auth/status', { cache: 'no-store' });
+    const data = (await response.json().catch(() => null)) as AuthStatusPayload | null;
+
+    if (!data) {
+      setMode('setup');
+      setSetupInfo({
+        code: 'RUNTIME_ERROR',
+        title: uiCopy.login.fallbackSetupTitle,
+        message: uiCopy.login.fallbackSetupMessage,
+        steps: [...uiCopy.login.fallbackSetupSteps]
+      });
       return;
     }
 
-    const data = (await response.json()) as { hasUsers: boolean };
-    setHasUsers(data.hasUsers);
+    if (data.mode === 'setup') {
+      setMode('setup');
+      setSetupInfo(data.setup);
+      return;
+    }
+
+    setMode(data.mode);
+    setWarnings(data.warnings ?? []);
   };
 
   useEffect(() => {
@@ -31,11 +71,16 @@ export function LoginClient() {
   }, []);
 
   const handleStart = async () => {
+    if (mode === 'loading' || mode === 'setup') {
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
-    const endpoint = hasUsers ? '/api/session/start' : '/api/auth/register';
-    const payload = hasUsers
+    const endpoint = mode === 'login' ? '/api/session/start' : '/api/auth/register';
+    const payload =
+      mode === 'login'
       ? { email, password }
       : {
           email,
@@ -49,13 +94,24 @@ export function LoginClient() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
-    });
+    }).catch(() => null);
+
+    if (!response) {
+      setError(uiCopy.login.noBackendResponseError);
+      setIsLoading(false);
+      return;
+    }
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => ({ error: 'Nie udalo sie uruchomic sesji.' }))) as {
+      const responsePayload = (await response.json().catch(() => ({ error: uiCopy.login.sessionStartFallbackError }))) as {
         error?: string;
+        setup?: SetupInfo;
       };
-      setError(payload.error ?? 'Nie udalo sie uruchomic sesji. Sprobuj ponownie.');
+      setError(responsePayload.error ?? uiCopy.login.sessionStartRetryError);
+      if (response.status === 503 && responsePayload.setup) {
+        setMode('setup');
+        setSetupInfo(responsePayload.setup);
+      }
       setIsLoading(false);
       return;
     }
@@ -67,54 +123,69 @@ export function LoginClient() {
   return (
     <section className="panel auth-panel">
       <header className="hero-header">
-        <span className="eyebrow">PatternFinder</span>
-        <h1>Od reaktywnosci do kontroli przez codzienny system decyzji</h1>
-        <p className="hero-support">
-          Wejdz do cockpitu samoregulacji. Pierwszy uzytkownik zaklada konto email i przejmuje aplikacje.
-        </p>
+        <span className="eyebrow">{uiCopy.login.heroEyebrow}</span>
+        <h1>{uiCopy.login.heroTitle}</h1>
+        <p className="hero-support">{uiCopy.login.heroSupport}</p>
       </header>
 
+      {setupInfo && (
+        <Banner tone="warning" title={setupInfo.title}>
+          {setupInfo.message}
+          <ul className="setup-help-list">
+            {setupInfo.steps.map((step, index) => (
+              <li key={`${setupInfo.code}-${index}`}>{step}</li>
+            ))}
+          </ul>
+        </Banner>
+      )}
+
+      {warnings.map((warning, index) => (
+        <Banner key={`warn-${index}`} tone="info" title={uiCopy.login.warningTitle}>
+          {warning}
+        </Banner>
+      ))}
+
       {error && (
-        <Banner tone="danger" title="Blad uruchomienia">
+        <Banner tone="danger" title={uiCopy.login.launchErrorTitle}>
           {error}
         </Banner>
       )}
 
       <div className="stack">
         <label className="stack-sm" htmlFor="email">
-          Email
+          {uiCopy.login.emailLabel}
           <input
             autoComplete="email"
             id="email"
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="twoj@email.com"
+            placeholder={uiCopy.login.emailPlaceholder}
             type="email"
             value={email}
           />
         </label>
 
         <label className="stack-sm" htmlFor="password">
-          Haslo
+          {uiCopy.login.passwordLabel}
           <input
-            autoComplete={hasUsers ? 'current-password' : 'new-password'}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             id="password"
             minLength={8}
             onChange={(event) => setPassword(event.target.value)}
-            placeholder="Minimum 8 znakow"
+            placeholder={uiCopy.login.passwordPlaceholder}
             type="password"
             value={password}
           />
         </label>
 
-        {hasUsers === false && (
+        {mode === 'register' && (
           <label className="stack-sm" htmlFor="confirmPassword">
-            Potwierdz haslo
+            {uiCopy.login.confirmPasswordLabel}
             <input
               autoComplete="new-password"
               id="confirmPassword"
               minLength={8}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Powtorz haslo"
+              placeholder={uiCopy.login.confirmPasswordPlaceholder}
               type="password"
               value={confirmPassword}
             />
@@ -127,20 +198,34 @@ export function LoginClient() {
           variant="primary"
           disabled={
             isLoading ||
-            hasUsers === null ||
+            mode === 'loading' ||
+            mode === 'setup' ||
             !email.trim() ||
             password.trim().length < 8 ||
-            (hasUsers === false && confirmPassword.trim().length < 8)
+            (mode === 'register' && confirmPassword.trim().length < 8)
           }
         >
-          {isLoading ? 'Logowanie...' : hasUsers ? 'Zaloguj sie' : 'Utworz pierwsze konto'}
+          {isLoading
+            ? mode === 'register'
+              ? uiCopy.login.loadingRegister
+              : uiCopy.login.loadingLogin
+            : mode === 'login'
+              ? uiCopy.login.ctaLogin
+              : mode === 'register'
+                ? uiCopy.login.ctaRegister
+                : uiCopy.login.ctaUnavailable}
+        </Button>
+        <Button onClick={() => void loadStatus()} size="sm" variant="ghost">
+          {uiCopy.login.refreshStatus}
         </Button>
         <small>
-          {hasUsers === null
-            ? 'Sprawdzam status konta...'
-            : hasUsers
-              ? 'Logowanie email + haslo.'
-              : 'Pierwszy uzytkownik: utworz konto email + haslo.'}
+          {mode === 'loading'
+            ? uiCopy.login.checkingStatus
+            : mode === 'login'
+              ? uiCopy.login.loginHelp
+              : mode === 'register'
+                ? uiCopy.login.registerHelp
+                : uiCopy.login.setupHelp}
         </small>
       </div>
     </section>

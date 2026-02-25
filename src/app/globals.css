@@ -1338,6 +1338,47 @@ input[type='checkbox'] {
   text-decoration: underline;
 }
 
+.setup-help-list {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.1rem;
+}
+
+.setup-help-list li + li {
+  margin-top: 0.35rem;
+}
+
+.welcome-overlay {
+  border-color: rgba(200, 163, 93, 0.45);
+  box-shadow: var(--shadow-glow);
+}
+
+.choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.choice-pill {
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid var(--line-default);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: 0.45rem 0.8rem;
+  transition:
+    border-color var(--duration-fast) var(--easing-standard),
+    color var(--duration-fast) var(--easing-standard),
+    background var(--duration-fast) var(--easing-standard);
+}
+
+.choice-pill.active {
+  background: rgba(30, 63, 174, 0.1);
+  border-color: rgba(30, 63, 174, 0.4);
+  color: var(--status-info);
+}
+
 @media (max-width: 1020px) {
   main {
     padding: var(--space-4);

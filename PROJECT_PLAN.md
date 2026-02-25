@@ -1,7 +1,7 @@
 # PatternFinder Project Plan
 
 ## Product Direction
-- Web MVP single-user, bez logowania i bez PIN.
+- Web MVP single-user, z logowaniem email + haslo.
 - Fokus: szybkie dzienne check-iny + raporty wzorcow + grywalizacja.
 - Pozycjonowanie: cockpit samoregulacji dla Performance Builder.
 

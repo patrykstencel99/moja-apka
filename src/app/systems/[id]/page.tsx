@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 
 import { NavBar } from '@/components/NavBar';
 import { SystemDetailClient } from '@/components/systems/SystemDetailClient';
+import { uiCopy } from '@/lib/copy';
 import { STARTER_SYSTEMS } from '@/lib/starter-packs';
 
 type Props = {
@@ -22,9 +23,9 @@ export default function SystemDetailPage({ params }: Props) {
       <NavBar />
       <section className="panel">
         <header className="hero-header">
-          <span className="eyebrow">System</span>
+          <span className="eyebrow">{uiCopy.pages.systemDetail.eyebrow}</span>
           <h1>{system.name}</h1>
-          <p className="hero-support">Aktywacja, doprecyzowanie i codzienne uzycie na Today.</p>
+          <p className="hero-support">{uiCopy.pages.systemDetail.support}</p>
         </header>
         <SystemDetailClient system={system} />
       </section>

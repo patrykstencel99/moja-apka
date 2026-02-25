@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { uiCopy } from '@/lib/copy';
 import type { StarterSignal, StarterSystem } from '@/types/domain';
 
 type Props = {
@@ -39,13 +40,17 @@ export function SystemTuneClient({ system }: Props) {
 
   return (
     <div className="stack-lg">
-      <Card tone="elevated" title={`Doprecyzowanie: ${system.name}`} subtitle="Typ sygnalu i kiedy ma sens.">
+      <Card
+        tone="elevated"
+        title={`${uiCopy.systemTune.titlePrefix} ${system.name}`}
+        subtitle={uiCopy.systemTune.subtitle}
+      >
         <div className="stack">
           {configs.map((signal) => (
-            <Card key={signal.name} subtitle="Dopasuj pod swoj rytm" title={signal.name}>
+            <Card key={signal.name} subtitle={uiCopy.systemTune.signalCardSubtitle} title={signal.name}>
               <div className="grid grid-2">
                 <label className="stack-sm">
-                  Typ
+                  {uiCopy.systemTune.typeLabel}
                   <select
                     onChange={(event) =>
                       updateSignal(signal.name, {
@@ -60,7 +65,7 @@ export function SystemTuneClient({ system }: Props) {
                 </label>
 
                 <label className="stack-sm">
-                  Kiedy ma sens
+                  {uiCopy.systemTune.cadenceLabel}
                   <select
                     onChange={(event) =>
                       updateSignal(signal.name, {
@@ -69,9 +74,9 @@ export function SystemTuneClient({ system }: Props) {
                     }
                     value={signal.cadence}
                   >
-                    <option value="RANO">Rano</option>
-                    <option value="DZIEN">W ciagu dnia</option>
-                    <option value="WIECZOR">Wieczorem</option>
+                    <option value="RANO">{uiCopy.systemTune.cadenceMorning}</option>
+                    <option value="DZIEN">{uiCopy.systemTune.cadenceDay}</option>
+                    <option value="WIECZOR">{uiCopy.systemTune.cadenceEvening}</option>
                   </select>
                 </label>
               </div>
@@ -81,13 +86,13 @@ export function SystemTuneClient({ system }: Props) {
       </Card>
 
       {saved && (
-        <Banner tone="success" title="Zapisane lokalnie">
-          Konfiguracja dopracowana. W tej wersji MVP ustawienia tuningu sa warstwa UI.
+        <Banner tone="success" title={uiCopy.systemTune.savedTitle}>
+          {uiCopy.systemTune.savedBody}
         </Banner>
       )}
 
       <Button onClick={() => setSaved(true)} size="lg" variant="primary">
-        Gotowe
+        {uiCopy.systemTune.doneButton}
       </Button>
     </div>
   );

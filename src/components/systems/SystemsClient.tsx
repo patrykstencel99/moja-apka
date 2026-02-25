@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readStringArray, writeStringArray } from '@/lib/state/local-storage';
 import type { StarterSystem } from '@/types/domain';
 
@@ -31,12 +32,12 @@ const SYSTEM_VISUAL: Record<string, string> = {
 
 function cadenceLabel(value: StarterSignal['cadence']) {
   if (value === 'RANO') {
-    return 'Rano';
+    return uiCopy.systems.cadenceMorning;
   }
   if (value === 'WIECZOR') {
-    return 'Wieczor';
+    return uiCopy.systems.cadenceEvening;
   }
-  return 'W ciagu dnia';
+  return uiCopy.systems.cadenceDay;
 }
 
 function inferSignalType(name: string) {
@@ -93,7 +94,7 @@ export function SystemsClient() {
     ]);
 
     if (!systemsRes.ok || !activitiesRes.ok) {
-      setError('Nie udalo sie pobrac danych Systemow.');
+      setError(uiCopy.systems.loadError);
       return;
     }
 
@@ -124,7 +125,7 @@ export function SystemsClient() {
     });
 
     if (!response.ok) {
-      setError('Nie udalo sie aktywowac systemu.');
+      setError(uiCopy.systems.activateError);
       return;
     }
 
@@ -132,7 +133,7 @@ export function SystemsClient() {
     setActiveIds(next);
     writeStringArray(STORAGE_KEYS.activeSystems, next);
 
-    setInfo(includeOptional ? 'System aktywowany (core + advanced).' : 'System aktywowany (core).');
+    setInfo(includeOptional ? uiCopy.systems.activatedFull : uiCopy.systems.activatedCore);
     await load();
   };
 
@@ -148,7 +149,7 @@ export function SystemsClient() {
 
     if (!response.ok) {
       const data = (await response.json()) as { error?: string };
-      setError(data.error ?? 'Nie udalo sie dodac sygnalu.');
+      setError(data.error ?? uiCopy.systems.addSignalError);
       return;
     }
 
@@ -157,32 +158,32 @@ export function SystemsClient() {
     setCadence('DZIEN');
     setDefinitionTouched(false);
     setDefinition(generateDefinition({ name: '', cadence: 'DZIEN', type: 'BOOLEAN' }));
-    setInfo('Custom sygnal dodany.');
+    setInfo(uiCopy.systems.customSignalAdded);
     await load();
   };
 
   return (
     <div className="stack-lg">
       {(error || info) && (
-        <Banner tone={error ? 'danger' : 'success'} title={error ? 'Problem' : 'Status'}>
+        <Banner tone={error ? 'danger' : 'success'} title={error ? uiCopy.systems.bannerProblem : uiCopy.systems.bannerStatus}>
           {error ?? info}
         </Banner>
       )}
 
       <Card
         tone="elevated"
-        title="Aktywne systemy"
-        subtitle="Priorytet: 1 system. Maksymalnie 2 aktywne."
+        title={uiCopy.systems.activeTitle}
+        subtitle={uiCopy.systems.activeSubtitle}
       >
         {activeSystems.length === 0 ? (
-          <div className="empty-state">Brak aktywnego systemu. Aktywuj jeden system ponizej.</div>
+          <div className="empty-state">{uiCopy.systems.activeEmpty}</div>
         ) : (
           <div className="grid grid-2">
             {activeSystems.map((system) => (
               <Card
                 className="card-stagger"
                 key={system.id}
-                subtitle={`Core ${system.coreSignals.length} • Adv ${system.advancedSignals.length}`}
+                subtitle={`Podst ${system.coreSignals.length} • Rozs ${system.advancedSignals.length}`}
                 title={system.name}
               >
                 <div className="system-hero">
@@ -197,7 +198,7 @@ export function SystemsClient() {
                 <p>{system.outcome}</p>
                 <div className="setup-system-actions">
                   <Link className="review-link" href={`/systems/${system.id}`}>
-                    Szczegoly
+                    {uiCopy.systems.detailsLink}
                   </Link>
                 </div>
               </Card>
@@ -208,8 +209,8 @@ export function SystemsClient() {
 
       <Card
         tone="elevated"
-        title="Starter Systems"
-        subtitle="Najpierw binarnie. Dopiero potem precyzja."
+        title={uiCopy.systems.starterTitle}
+        subtitle={uiCopy.systems.starterSubtitle}
       >
         <div className="grid grid-3">
           {systems.map((system) => (
@@ -218,7 +219,7 @@ export function SystemsClient() {
               key={system.id}
               subtitle={system.outcome}
               title={system.name}
-              actions={<span className="metric-badge">Core {system.coreSignals.length} • Adv {system.advancedSignals.length}</span>}
+              actions={<span className="metric-badge">Podst {system.coreSignals.length} • Rozs {system.advancedSignals.length}</span>}
             >
               <div className="system-hero">
                 <Image
@@ -231,7 +232,7 @@ export function SystemsClient() {
               </div>
               <div className="setup-signal-columns">
                 <div>
-                  <strong>Core</strong>
+                  <strong>{uiCopy.systems.coreLabel}</strong>
                   <ul>
                     {system.coreSignals.map((signal) => (
                       <li key={`${system.id}-${signal.name}`}>
@@ -246,7 +247,7 @@ export function SystemsClient() {
                 </div>
 
                 <div>
-                  <strong>Advanced</strong>
+                  <strong>{uiCopy.systems.advancedLabel}</strong>
                   <ul>
                     {system.advancedSignals.map((signal) => (
                       <li key={`${system.id}-adv-${signal.name}`}>
@@ -263,19 +264,19 @@ export function SystemsClient() {
 
               <div className="panel-subtle">
                 <small>
-                  <strong>Domyslne okno:</strong> {system.defaults.checkWindow}
+                  <strong>{uiCopy.systems.defaultsWindowLabel}</strong> {system.defaults.checkWindow}
                 </small>
                 <small>
-                  <strong>Zasada oceny:</strong> {system.defaults.scoreRule}
+                  <strong>{uiCopy.systems.defaultsRuleLabel}</strong> {system.defaults.scoreRule}
                 </small>
               </div>
 
               <div className="setup-system-actions">
                 <Button onClick={() => void activateSystem(system.id, false)} size="sm" variant="secondary">
-                  Aktywuj core
+                  {uiCopy.systems.activateCore}
                 </Button>
                 <Button onClick={() => void activateSystem(system.id, true)} size="sm" variant="ghost">
-                  Aktywuj core + advanced
+                  {uiCopy.systems.activateFull}
                 </Button>
               </div>
             </Card>
@@ -285,61 +286,65 @@ export function SystemsClient() {
 
       <Card
         tone="default"
-        title="Generator definicji sygnalu"
-        subtitle="Skala 0-10 jest narzedziem. Nie ozdoba."
+        title={uiCopy.systems.generatorTitle}
+        subtitle={uiCopy.systems.generatorSubtitle}
       >
         {suggestedType !== type && (
-          <Banner tone="warning" title="Sugestia">
-            Ten sygnal wyglada na {suggestedType === 'BOOLEAN' ? 'Tak/Nie' : 'skale 0-10'}. Zmien typ tylko, jesli to ma realny sens.
+          <Banner tone="warning" title={uiCopy.systems.suggestionTitle}>
+            {uiCopy.systems.suggestionBodyPrefix}{' '}
+            {suggestedType === 'BOOLEAN' ? uiCopy.systems.suggestionBodyBoolean : uiCopy.systems.suggestionBodyNumeric}
+            {uiCopy.systems.suggestionBodySuffix}
           </Banner>
         )}
 
         <div className="grid grid-4">
           <label className="stack-sm">
-            Nazwa sygnalu
-            <input onChange={(event) => setName(event.target.value)} placeholder="np. Scroll przed pierwszym blokiem pracy" value={name} />
+            {uiCopy.systems.signalNameLabel}
+            <input onChange={(event) => setName(event.target.value)} placeholder={uiCopy.systems.signalNamePlaceholder} value={name} />
           </label>
 
           <label className="stack-sm">
-            Kategoria
-            <input onChange={(event) => setCategory(event.target.value)} placeholder="np. Produktywnosc" value={category} />
+            {uiCopy.systems.categoryLabel}
+            <input onChange={(event) => setCategory(event.target.value)} placeholder={uiCopy.systems.categoryPlaceholder} value={category} />
           </label>
 
           <label className="stack-sm">
-            Kiedy mierzysz?
+            {uiCopy.systems.cadenceLabel}
             <select onChange={(event) => setCadence(event.target.value as StarterSignal['cadence'])} value={cadence}>
-              <option value="RANO">Rano</option>
-              <option value="DZIEN">W ciagu dnia</option>
-              <option value="WIECZOR">Wieczorem</option>
+              <option value="RANO">{uiCopy.systems.cadenceMorning}</option>
+              <option value="DZIEN">{uiCopy.systems.cadenceDay}</option>
+              <option value="WIECZOR">{uiCopy.systems.cadenceEvening}</option>
             </select>
           </label>
 
           <label className="stack-sm">
-            Typ
+            {uiCopy.systems.typeLabel}
             <select onChange={(event) => setType(event.target.value as 'BOOLEAN' | 'NUMERIC_0_10')} value={type}>
-              <option value="BOOLEAN">Tak/Nie (domyslnie)</option>
-              <option value="NUMERIC_0_10">Skala 0-10</option>
+              <option value="BOOLEAN">{uiCopy.systems.typeBoolean}</option>
+              <option value="NUMERIC_0_10">{uiCopy.systems.typeNumeric}</option>
             </select>
           </label>
         </div>
 
         <label className="stack-sm">
-          Co to znaczy &quot;zaliczone&quot;?
+          {uiCopy.systems.definitionLabel}
           <textarea
             onChange={(event) => {
               setDefinition(event.target.value);
               setDefinitionTouched(true);
             }}
-            placeholder="Tak = ... / 0-10 = ..."
+            placeholder={uiCopy.systems.definitionPlaceholder}
             value={definition}
           />
         </label>
 
         <Button block disabled={!name.trim()} onClick={() => void addCustomSignal()} variant="primary">
-          Dodaj sygnal
+          {uiCopy.systems.addSignalButton}
         </Button>
 
-        <small>Aktywnych sygnalow w systemie: {activities.length}</small>
+        <small>
+          {uiCopy.systems.activeSignalsCount} {activities.length}
+        </small>
       </Card>
     </div>
   );

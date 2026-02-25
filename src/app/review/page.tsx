@@ -1,5 +1,6 @@
 import { NavBar } from '@/components/NavBar';
 import { ReviewClient } from '@/components/review/ReviewClient';
+import { uiCopy } from '@/lib/copy';
 
 export default function ReviewPage() {
   return (
@@ -7,11 +8,9 @@ export default function ReviewPage() {
       <NavBar />
       <section className="panel">
         <header className="hero-header">
-          <span className="eyebrow">Review 2x / 5x / 10x</span>
-          <h1>To hipotezy decyzyjne, nie galerie wykresow.</h1>
-          <p className="hero-support">
-            Gdy danych jest malo dostajesz eksperyment tygodnia. Gdy danych jest duzo: Top gain, Top risk i Next test.
-          </p>
+          <span className="eyebrow">{uiCopy.pages.review.eyebrow}</span>
+          <h1>{uiCopy.pages.review.title}</h1>
+          <p className="hero-support">{uiCopy.pages.review.support}</p>
         </header>
         <ReviewClient />
       </section>
