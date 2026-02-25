@@ -89,13 +89,31 @@ Smoke domyslnie sprawdza: `/today`, `/systems`, `/review`.
 1. Postgres: utworz baze w Supabase Free.
 2. App: wrzuc repo na GitHub i podlacz do Vercel.
 3. W Vercel ustaw env vars z `.env.example`.
-4. Po deployu uruchom migracje/seed jednorazowo:
+4. Jednorazowo lokalnie:
 
 ```bash
 npm run prisma:generate
 npm run prisma:push
 npm run prisma:seed
 ```
+
+## Wdrazanie zmian (1 komenda)
+
+Po jednorazowej konfiguracji Vercel deployuje automatycznie po pushu na `main`.
+Ty uruchamiasz tylko:
+
+```bash
+npm run release -- "krotki opis zmiany"
+```
+
+Co robi skrypt `release`:
+
+1. `npm run doctor`
+2. `npm run build`
+3. jesli zmienil sie `prisma/schema.prisma` -> `npm run prisma:push`
+4. `git add -A`
+5. `git commit`
+6. `git push origin main` (Vercel deployuje sam)
 
 ## Disclaimer
 

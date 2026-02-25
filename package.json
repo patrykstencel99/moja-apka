@@ -14,6 +14,7 @@
     "doctor": "node scripts/doctor.mjs",
     "smoke": "node scripts/smoke-routes.mjs",
     "qa:full": "npm run lint && npm test && npm run build && npm run smoke",
+    "release": "node scripts/release.mjs",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
