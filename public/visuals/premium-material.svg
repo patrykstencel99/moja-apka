@@ -1,0 +1,41 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F9F6EE"/>
+      <stop offset="1" stop-color="#ECE7DD"/>
+    </linearGradient>
+    <linearGradient id="metalA" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#B8A179" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#8A748F" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="metalB" x1="1" y1="0" x2="0" y2="1">
+      <stop stop-color="#4C5564" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#B8A179" stop-opacity="0.12"/>
+    </linearGradient>
+    <filter id="blur" x="0" y="0" width="1600" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#paper)"/>
+  <g opacity="0.24">
+    <path d="M0 128C180 84 360 82 544 118C706 150 868 206 1054 190C1248 172 1416 104 1600 96V0H0V128Z" fill="url(#metalA)"/>
+    <path d="M0 900H1600V764C1428 758 1264 784 1088 842C900 904 706 928 520 886C346 846 174 782 0 790V900Z" fill="url(#metalB)"/>
+  </g>
+  <g filter="url(#blur)" opacity="0.16">
+    <circle cx="320" cy="308" r="120" fill="#D4BD89"/>
+    <circle cx="1260" cy="594" r="146" fill="#586174"/>
+    <circle cx="980" cy="228" r="90" fill="#A58E62"/>
+  </g>
+  <g stroke="#6B7484" stroke-opacity="0.12">
+    <path d="M0 180H1600"/>
+    <path d="M0 240H1600"/>
+    <path d="M0 300H1600"/>
+    <path d="M0 360H1600"/>
+    <path d="M0 420H1600"/>
+    <path d="M0 480H1600"/>
+    <path d="M0 540H1600"/>
+    <path d="M0 600H1600"/>
+    <path d="M0 660H1600"/>
+    <path d="M0 720H1600"/>
+  </g>
+</svg>
