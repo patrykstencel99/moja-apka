@@ -74,3 +74,44 @@ self.addEventListener('fetch', (event) => {
       )
   );
 });
+
+self.addEventListener('push', (event) => {
+  const payload = event.data
+    ? event.data.json()
+    : {
+        title: 'PatternFinder',
+        body: 'Czas na check-in.',
+        url: '/today'
+      };
+
+  const title = payload.title ?? 'PatternFinder';
+  const options = {
+    body: payload.body ?? 'Czas na check-in.',
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+    data: {
+      url: payload.url ?? '/today'
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url ?? '/today';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      for (const client of clientsArr) {
+        if ('focus' in client && client.url.includes(targetUrl)) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+      return undefined;
+    })
+  );
+});

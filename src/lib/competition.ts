@@ -788,6 +788,64 @@ function computePeriodMaxStreak(dates: string[]): number {
   return best;
 }
 
+function resolveClosestRivals(params: {
+  rows: CompetitionLeaderboardRow[];
+  userId?: string;
+  metric: CompetitionMetric;
+}): { closestRivals: CompetitionLeaderboardRow[]; promotionHint: string } {
+  const { rows, userId, metric } = params;
+  if (!userId || rows.length === 0) {
+    return {
+      closestRivals: rows.slice(0, Math.min(5, rows.length)),
+      promotionHint: 'Zrob dzis check-in, aby utrzymac miejsce.'
+    };
+  }
+
+  const meIndex = rows.findIndex((row) => row.userId === userId);
+  if (meIndex === -1) {
+    return {
+      closestRivals: rows.slice(0, Math.min(5, rows.length)),
+      promotionHint: 'Pierwszy check-in dnia wlaczy Cie do najblizszej rywalizacji.'
+    };
+  }
+
+  const start = Math.max(0, meIndex - 2);
+  const end = Math.min(rows.length, meIndex + 3);
+  const closestRivals = rows.slice(start, end);
+
+  const me = rows[meIndex]!;
+  const above = meIndex > 0 ? rows[meIndex - 1] : null;
+
+  if (!above) {
+    return {
+      closestRivals,
+      promotionHint: 'Jestes na prowadzeniu. Domknij 2/2, by utrzymac przewage.'
+    };
+  }
+
+  if (metric === 'maxStreak') {
+    const gap = Math.max(1, above.maxStreak - me.maxStreak + 1);
+    return {
+      closestRivals,
+      promotionHint: `Brakuje ${gap} dni serii, aby awansowac o 1 miejsce.`
+    };
+  }
+
+  if (metric === 'totalCheckIns') {
+    const gap = Math.max(1, above.totalCheckIns - me.totalCheckIns + 1);
+    return {
+      closestRivals,
+      promotionHint: `Brakuje ${gap} check-inow, aby awansowac o 1 miejsce.`
+    };
+  }
+
+  const gap = Math.max(1, above.score - me.score + 1);
+  return {
+    closestRivals,
+    promotionHint: `Brakuje ${gap} pkt, aby awansowac o 1 miejsce.`
+  };
+}
+
 async function buildLeaderboardRows(metric: CompetitionMetric, period: CompetitionPeriod): Promise<CompetitionLeaderboardRow[]> {
   const range = getRangeForPeriod(period);
 
@@ -913,6 +971,7 @@ export async function getLeaderboard(params: {
   metric: CompetitionMetric;
   period: CompetitionPeriod;
   limit?: number;
+  userId?: string;
 }): Promise<CompetitionLeaderboardPayload> {
   const metric = params.metric;
   const period = params.period;
@@ -934,12 +993,19 @@ export async function getLeaderboard(params: {
   if (snapshot && isFresh) {
     const payload = snapshot.payload as { rows?: CompetitionLeaderboardRow[]; generatedAt?: string };
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
+    const closest = resolveClosestRivals({
+      rows,
+      userId: params.userId,
+      metric
+    });
 
     return {
       metric: fromMetricEnum(snapshot.metric),
       period: period,
       generatedAt: payload.generatedAt ?? snapshot.generatedAt.toISOString(),
-      rows: rows.slice(0, limit)
+      rows: rows.slice(0, limit),
+      closestRivals: closest.closestRivals,
+      promotionHint: closest.promotionHint
     };
   }
 
@@ -972,9 +1038,17 @@ export async function getLeaderboard(params: {
     }
   });
 
+  const closest = resolveClosestRivals({
+    rows: nextPayload.rows,
+    userId: params.userId,
+    metric
+  });
+
   return {
     ...nextPayload,
-    rows: nextPayload.rows.slice(0, limit)
+    rows: nextPayload.rows.slice(0, limit),
+    closestRivals: closest.closestRivals,
+    promotionHint: closest.promotionHint
   };
 }
 

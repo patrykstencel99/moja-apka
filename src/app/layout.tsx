@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 import { PwaRegister } from '@/components/PwaRegister';
+import { TutorialProvider } from '@/components/tutorial/TutorialProvider';
 import { getServerUser } from '@/lib/auth';
 import { uiCopy } from '@/lib/copy';
 import { getThemeDefinition } from '@/lib/fun';
@@ -31,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html data-theme={theme} lang="pl">
       <body>
         <PwaRegister />
-        {children}
+        <TutorialProvider>{children}</TutorialProvider>
       </body>
     </html>
   );

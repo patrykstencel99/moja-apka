@@ -58,11 +58,30 @@ export type ThemeDto = {
   active: boolean;
 };
 
+export type EngagementSlotDto = 'SLOT_1' | 'SLOT_2';
+
+export type EngagementTodayDto = {
+  slot1Done: boolean;
+  slot2Done: boolean;
+  perfectDay: boolean;
+  perfectDays7d: number;
+  perfectDays30d: number;
+  rescueQuestActive: boolean;
+  rescueCompletedToday: boolean;
+  comebackGapDays: number | null;
+  lastCompletedSlot: EngagementSlotDto | null;
+  xpAwardedToday: number;
+  nextReminderAt: string | null;
+  rankDeltaToday: number;
+  riskOfDrop: number;
+  socialPressureMode: 'STRONG' | 'SOFT';
+};
+
 export type FunTodayPayload = {
   quest: DailyQuestDto;
   combo: ComboStateDto;
   bossWeek: BossWeekDto;
   duel: DuelDto | null;
   stamp: StampDto | null;
+  engagement: EngagementTodayDto;
 };
-

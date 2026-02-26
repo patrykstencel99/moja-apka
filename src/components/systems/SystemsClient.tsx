@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { fetchJsonCached, invalidateClientFetchCache } from '@/lib/client-fetch-cache';
 import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readStringArray, writeStringArray } from '@/lib/state/local-storage';
+import { TUTORIAL_CLIENT_EVENTS } from '@/lib/tutorial/config';
 import type { StarterSystem } from '@/types/domain';
 
 type Activity = {
@@ -140,6 +141,17 @@ export function SystemsClient() {
 
       setInfo(includeOptional ? uiCopy.systems.activatedFull : uiCopy.systems.activatedCore);
       await load('refresh');
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent(TUTORIAL_CLIENT_EVENTS.systemActivated, {
+            detail: {
+              route: '/systems',
+              systemId
+            }
+          })
+        );
+      }
     } catch {
       setError(uiCopy.systems.activateError);
     } finally {
@@ -288,6 +300,7 @@ export function SystemsClient() {
 
                 <div className="setup-system-actions">
                   <Button
+                    data-tutorial-id="systems-activate"
                     disabled={pendingActivationId !== null}
                     onClick={() => void activateSystem(system.id, false)}
                     size="sm"
@@ -296,6 +309,7 @@ export function SystemsClient() {
                     {pendingActivationId === system.id ? 'Aktywacja...' : 'Aktywuj podstawowe'}
                   </Button>
                   <Button
+                    data-tutorial-id="systems-activate"
                     disabled={pendingActivationId !== null}
                     onClick={() => void activateSystem(system.id, true)}
                     size="sm"

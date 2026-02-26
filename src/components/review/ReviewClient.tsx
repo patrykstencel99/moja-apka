@@ -7,6 +7,7 @@ import { Banner } from '@/components/ui/Banner';
 import { Card } from '@/components/ui/Card';
 import { fetchJsonCached } from '@/lib/client-fetch-cache';
 import { uiCopy } from '@/lib/copy';
+import { TUTORIAL_CLIENT_EVENTS } from '@/lib/tutorial/config';
 import type { DuelDto, StampDto } from '@/types/fun';
 
 type Insight = {
@@ -315,6 +316,17 @@ export function ReviewClient() {
       setYearCheckins(yearRes.data.checkIns);
       setStamps(stampsRes.data.stamps ?? []);
       setExperimentsCount((duelsRes.data.duels ?? []).length);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent(TUTORIAL_CLIENT_EVENTS.reviewLoaded, {
+            detail: {
+              route: '/review',
+              period: 'week+month'
+            }
+          })
+        );
+      }
     };
 
     void load();
@@ -400,6 +412,7 @@ export function ReviewClient() {
       )}
 
       <Card
+        data-tutorial-id="review-main-report"
         tone="strong"
         title={uiCopy.review.cockpitTitle}
         subtitle={uiCopy.review.cockpitSubtitle}

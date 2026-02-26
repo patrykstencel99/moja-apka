@@ -51,8 +51,10 @@ export async function updateGamificationAfterCheckIn(params: {
   localDate: string;
   createdAt: Date;
   userTimeZone: string;
+  xpDelta?: number;
 }) {
   const { userId, localDate, createdAt, userTimeZone } = params;
+  const xpDelta = params.xpDelta ?? XP_PER_CHECKIN;
 
   const [state, entriesToday] = await Promise.all([
     prisma.gamificationState.findUnique({ where: { userId } }),
@@ -76,8 +78,8 @@ export async function updateGamificationAfterCheckIn(params: {
 
   bestStreak = Math.max(bestStreak, currentStreak);
 
-  totalXp += XP_PER_CHECKIN;
-  if (entriesToday === 3) {
+  totalXp += xpDelta;
+  if (entriesToday === 3 && xpDelta > 0) {
     totalXp += XP_BONUS_THIRD_ENTRY;
     await ensureBadge(userId, BadgeType.THREE_ENTRIES_ONE_DAY);
   }

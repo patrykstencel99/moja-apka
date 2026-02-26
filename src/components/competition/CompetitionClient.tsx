@@ -56,7 +56,7 @@ function formatDateTime(value: string) {
 
 export function CompetitionClient() {
   const [metric, setMetric] = useState<CompetitionMetric>('score');
-  const [period, setPeriod] = useState<CompetitionPeriod>('30d');
+  const [period, setPeriod] = useState<CompetitionPeriod>('7d');
   const [leaderboard, setLeaderboard] = useState<CompetitionLeaderboardPayload | null>(null);
   const [me, setMe] = useState<CompetitionMePayload | null>(null);
   const [badges, setBadges] = useState<BadgeProgress[]>([]);
@@ -149,6 +149,33 @@ export function CompetitionClient() {
             )}
           </Card>
         </div>
+      </Card>
+
+      <Card tone="elevated" title="Najblizsi rywale" subtitle={leaderboard?.promotionHint}>
+        {!leaderboard || !leaderboard.closestRivals || leaderboard.closestRivals.length === 0 ? (
+          <div className="empty-state">Brak danych o najblizszych rywalach.</div>
+        ) : (
+          <div className="competition-table">
+            <div className="competition-table__row competition-table__row--head">
+              <span>{uiCopy.competition.tableRank}</span>
+              <span>{uiCopy.competition.tableUser}</span>
+              <span>{uiCopy.competition.tableScore}</span>
+              <span>{uiCopy.competition.tableStreak}</span>
+              <span>{uiCopy.competition.tableCheckins}</span>
+            </div>
+            {leaderboard.closestRivals.map((row) => (
+              <div className="competition-table__row" key={`closest-${row.userId}`}>
+                <span>#{row.rank}</span>
+                <span className="competition-user-cell">
+                  <strong>{row.displayName}</strong>
+                </span>
+                <span>{row.score}</span>
+                <span>{row.maxStreak}</span>
+                <span>{row.totalCheckIns}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card tone="elevated" title={uiCopy.competition.leaderboardTitle}>
