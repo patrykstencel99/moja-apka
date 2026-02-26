@@ -365,9 +365,26 @@ export const uiCopy = {
     avatarSeedLabel: 'Seed avatara (opcjonalnie)',
     profileSaveButton: 'Zapisz profil',
     profileSaved: 'Profil zapisany.',
+    tutorialTitle: 'Samouczek Intuicja',
+    tutorialSubtitle: 'Możesz zresetować i uruchomić samouczek od pierwszego kroku.',
+    tutorialRestartButton: 'Uruchom samouczek ponownie',
+    tutorialRestartPending: 'Restartowanie samouczka...',
+    tutorialRestarted: 'Samouczek uruchomiony od nowa.',
+    tutorialRestartError: 'Nie udalo sie uruchomic samouczka ponownie.',
     sessionTitle: 'Sesja',
     sessionSubtitle: 'Wylogowanie czysci lokalna sesje na tym urzadzeniu.',
     logoutButton: 'Wyloguj i wyczysc sesje'
+  },
+  tutorial: {
+    badge: 'Intuicja',
+    dismissTitle: 'Samouczek ukryty',
+    dismissBody: 'Mozesz go wznowic w Ustawieniach.',
+    remindBody: 'Krok pominięty. Wrócisz do następnego etapu później.',
+    progressPrefix: 'Krok',
+    waitingAction: 'Wykonaj akcję wskazaną w kroku i wróć tutaj.',
+    skipAllButton: 'Pomin',
+    remindLaterButton: 'Przypomnij pozniej',
+    continueButton: 'Dalej'
   },
   competition: {
     loadError: 'Nie udalo sie pobrac danych rywalizacji.',
@@ -522,6 +539,16 @@ export const apiCopy = {
     invalidData: 'Niepoprawne dane systemu.',
     notFound: 'Nie znaleziono systemu.',
     activationFailed: 'Nie udalo sie aktywowac systemu.'
+  },
+  tutorial: {
+    invalidStartPayload: 'Niepoprawny payload startu tutoriala.',
+    invalidStepPayload: 'Niepoprawny payload kroku tutoriala.',
+    invalidSkipPayload: 'Niepoprawny payload pominiecia tutoriala.',
+    invalidCompletePayload: 'Niepoprawny payload zakonczenia tutoriala.',
+    invalidRestartPayload: 'Niepoprawny payload restartu tutoriala.',
+    invalidStep: 'Nieznany krok tutoriala.',
+    notEligible: 'Ten uzytkownik nie jest aktualnie w rollout samouczka.',
+    coreNotCompleted: 'Najpierw wykonaj petle Today -> Systems -> Review.'
   },
   profile: {
     invalidData: 'Niepoprawne dane profilu.',

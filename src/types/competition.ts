@@ -30,6 +30,8 @@ export type CompetitionLeaderboardPayload = {
   period: CompetitionPeriod;
   generatedAt: string;
   rows: CompetitionLeaderboardRow[];
+  closestRivals?: CompetitionLeaderboardRow[];
+  promotionHint?: string;
 };
 
 export type BadgeProgress = {

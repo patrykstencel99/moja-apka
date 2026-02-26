@@ -7,7 +7,7 @@ import { jsonError } from '@/lib/http';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireApiUser(request);
+    const user = await requireApiUser(request);
 
     const url = new URL(request.url);
     const metric = resolveCompetitionMetric(url.searchParams.get('metric'));
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     const payload = await getLeaderboard({
       metric,
       period,
-      limit
+      limit,
+      userId: user.id
     });
 
     return NextResponse.json(payload);

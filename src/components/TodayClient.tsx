@@ -14,6 +14,7 @@ import { fetchJsonCached, invalidateClientFetchCache } from '@/lib/client-fetch-
 import { uiCopy } from '@/lib/copy';
 import { enqueueCheckIn, flushQueuedCheckIns } from '@/lib/offline-queue';
 import { buildNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
+import { TUTORIAL_CLIENT_EVENTS } from '@/lib/tutorial/config';
 import type { DuelDto, FunTodayPayload } from '@/types/fun';
 
 type Focus = 'ENERGY' | 'FOCUS' | 'SLEEP';
@@ -23,6 +24,10 @@ type UserProfile = {
   onboardingComplete: boolean;
   focus: Focus;
   checkinPreference: CheckinPreference;
+  notificationsEnabled?: boolean;
+  slot1HourLocal?: number;
+  slot2HourLocal?: number;
+  socialPressureMode?: 'STRONG' | 'SOFT';
 };
 
 type Activity = {
@@ -178,6 +183,11 @@ export function TodayClient() {
   const [captureOpen, setCaptureOpen] = useState(true);
   const [funState, setFunState] = useState<FunTodayPayload | null>(null);
   const [isSelectingDuel, setIsSelectingDuel] = useState<'A' | 'B' | null>(null);
+  const [lastCheckinReward, setLastCheckinReward] = useState<{
+    slot: 'SLOT_1' | 'SLOT_2';
+    xp: number;
+    perfectDayUnlocked: boolean;
+  } | null>(null);
 
   const [seedStatus, setSeedStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [overlayBusy, setOverlayBusy] = useState(false);
@@ -531,6 +541,19 @@ export function TodayClient() {
     [localDate, pathname]
   );
 
+  const jumpToCapture = useCallback(() => {
+    const element = document.getElementById('quick-capture');
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start'
+    });
+    setCaptureOpen(true);
+  }, []);
+
   const buildOfflineDuel = useCallback(
     (signals: NextMoveInputSignal[]): DuelDto => {
       const optionA = buildNextMove({
@@ -590,6 +613,7 @@ export function TodayClient() {
     setInfo('Zapisywanie check-inu...');
 
     try {
+      let checkinSavedOnServer = false;
       const clientEventId =
         typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
 
@@ -660,7 +684,23 @@ export function TodayClient() {
                 clearedAt: null
               },
               duel: buildOfflineDuel(captureSignals),
-              stamp: null
+              stamp: null,
+              engagement: {
+                slot1Done: false,
+                slot2Done: false,
+                perfectDay: false,
+                perfectDays7d: 0,
+                perfectDays30d: 0,
+                rescueQuestActive: false,
+                rescueCompletedToday: false,
+                comebackGapDays: null,
+                lastCompletedSlot: null,
+                xpAwardedToday: 0,
+                nextReminderAt: null,
+                rankDeltaToday: 0,
+                riskOfDrop: 0,
+                socialPressureMode: 'SOFT'
+              }
             };
           }
           return {
@@ -689,10 +729,32 @@ export function TodayClient() {
           return;
         }
 
-        const data = (await response.json().catch(() => null)) as { fun?: FunTodayPayload } | null;
+        checkinSavedOnServer = true;
+
+        const data = (await response.json().catch(() => null)) as
+          | { fun?: FunTodayPayload; engagement?: FunTodayPayload['engagement'] }
+          | null;
+        const previousEngagement = funState?.engagement ?? null;
+        const nextEngagement = data?.fun?.engagement ?? data?.engagement ?? null;
         invalidateClientFetchCache('/api/checkins?');
         invalidateClientFetchCache('/api/gamification/status');
         invalidateClientFetchCache('/api/fun/today?');
+        if (nextEngagement) {
+          const slotUnlocked: 'SLOT_1' | 'SLOT_2' | null =
+            !previousEngagement?.slot1Done && nextEngagement.slot1Done
+              ? 'SLOT_1'
+              : !previousEngagement?.slot2Done && nextEngagement.slot2Done
+                ? 'SLOT_2'
+                : null;
+
+          if (slotUnlocked) {
+            setLastCheckinReward({
+              slot: slotUnlocked,
+              xp: slotUnlocked === 'SLOT_1' ? 10 : 25,
+              perfectDayUnlocked: nextEngagement.perfectDay && !Boolean(previousEngagement?.perfectDay)
+            });
+          }
+        }
         if (data?.fun) {
           setFunState(data.fun);
           await load('refresh');
@@ -704,6 +766,16 @@ export function TodayClient() {
       setJournal('');
       setCaptureOpen(false);
       setInfo('Check-in zapisany. Wybierz jeden wariant Next Move.');
+
+      if (checkinSavedOnServer && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent(TUTORIAL_CLIENT_EVENTS.checkinSaved, {
+            detail: {
+              route: '/today'
+            }
+          })
+        );
+      }
 
       if (profile && !profile.onboardingComplete) {
         await saveProfile({ onboardingComplete: true });
@@ -888,6 +960,81 @@ export function TodayClient() {
         </Card>
       )}
 
+      <Card
+        tone="strong"
+        title="Rytm dnia: 2 sloty"
+        subtitle="Trigger -> 1 minuta check-in -> reward -> mikrokrok"
+        actions={
+          <Button className="daily-action-btn" onClick={jumpToCapture} size="sm" variant="primary">
+            Zrob check-in teraz
+          </Button>
+        }
+      >
+        <div className="grid grid-4 compact-grid">
+          <StatTile
+            label="Sloty"
+            value={`${(funState?.engagement.slot1Done ? 1 : 0) + (funState?.engagement.slot2Done ? 1 : 0)}/2`}
+            hint={`S1 ${funState?.engagement.slot1Done ? 'Tak' : 'Nie'} • S2 ${funState?.engagement.slot2Done ? 'Tak' : 'Nie'}`}
+          />
+          <StatTile
+            label="Perfect Day"
+            value={funState?.engagement.perfectDay ? 'Tak' : 'Nie'}
+            hint={`7 dni: ${funState?.engagement.perfectDays7d ?? 0}`}
+            trend={funState?.engagement.perfectDay ? 'up' : 'neutral'}
+          />
+          <StatTile
+            label="Delta pozycji"
+            value={funState?.engagement.rankDeltaToday ?? 0}
+            hint={uiCopy.competition.metricScore}
+            trend={(funState?.engagement.rankDeltaToday ?? 0) > 0 ? 'up' : 'neutral'}
+          />
+          <StatTile
+            label="Ryzyko spadku"
+            value={funState?.engagement.riskOfDrop ?? 0}
+            hint="Mniejsza wartosc = wieksze ryzyko"
+            trend={(funState?.engagement.riskOfDrop ?? 0) <= 10 ? 'down' : 'neutral'}
+          />
+        </div>
+        <small>
+          Tryb presji: <strong>{funState?.engagement.socialPressureMode ?? 'STRONG'}</strong>
+        </small>
+      </Card>
+
+      {lastCheckinReward && (
+        <Card
+          tone={lastCheckinReward.perfectDayUnlocked ? 'strong' : 'elevated'}
+          title={lastCheckinReward.perfectDayUnlocked ? 'Perfect Day odblokowany' : 'Nagroda po check-inie'}
+          subtitle={
+            lastCheckinReward.slot === 'SLOT_1'
+              ? 'Slot startu dnia zaliczony'
+              : 'Slot zamkniecia dnia zaliczony'
+          }
+          actions={
+            <Button className="daily-action-btn" onClick={jumpToCapture} size="sm" variant="secondary">
+              Ustaw kolejny ruch
+            </Button>
+          }
+        >
+          <p>
+            +{lastCheckinReward.xp} XP, quest: {funState?.quest.status ?? 'PENDING'}, combo x
+            {funState?.combo.displayMultiplier?.toFixed(1) ?? '1.0'}.
+          </p>
+        </Card>
+      )}
+
+      {funState?.engagement.rescueQuestActive && (
+        <Banner tone="info" title="Rescue quest aktywny">
+          Wrociles po przerwie {funState.engagement.comebackGapDays ?? 2}+ dni. Wystarczy domknac dzisiejszy rytm, aby
+          odzyskac tempo.
+        </Banner>
+      )}
+
+      {funState?.engagement.rescueCompletedToday && (
+        <Banner tone="success" title="Comeback udany">
+          Tempo odzyskane. Dostales jednorazowy bonus do combo za powrot do rytmu.
+        </Banner>
+      )}
+
       <section className={['year-focus', isYearLoading ? 'is-loading' : ''].join(' ')}>
         <div aria-hidden className="year-focus-art">
           <span className="orbit-ring orbit-ring--outer" />
@@ -1005,8 +1152,8 @@ export function TodayClient() {
         <div className="grid grid-4 compact-grid">
           <StatTile
             label={uiCopy.today.dayStatus.progressLabel}
-            value={`${Math.min(checkins.length, 3)}/3`}
-            hint={uiCopy.today.dayStatus.progressHint}
+            value={`${(funState?.engagement.slot1Done ? 1 : 0) + (funState?.engagement.slot2Done ? 1 : 0)}/2`}
+            hint="Postep slotow dnia"
           />
           <StatTile
             label={uiCopy.today.dayStatus.streakLabel}
@@ -1021,7 +1168,7 @@ export function TodayClient() {
           />
           <StatTile
             label="Combo"
-            value={`x${funState?.combo.displayMultiplier.toFixed(1) ?? '1.0'}`}
+            value={`x${funState?.combo.displayMultiplier?.toFixed(1) ?? '1.0'}`}
             hint={`BPS: ${funState?.combo.comboBps ?? 100}`}
             trend={(funState?.combo.comboBps ?? 100) > 150 ? 'up' : 'neutral'}
           />
@@ -1082,6 +1229,7 @@ export function TodayClient() {
       </div>
 
       <Card
+        id="quick-capture"
         tone="elevated"
         title={uiCopy.today.quickCapture.title}
         subtitle={uiCopy.today.quickCapture.subtitle}
@@ -1142,6 +1290,7 @@ export function TodayClient() {
             <Button
               block
               className={['daily-submit-btn', isSubmittingCheckIn ? 'is-loading' : ''].filter(Boolean).join(' ')}
+              data-tutorial-id="today-checkin-save"
               disabled={isSubmittingCheckIn}
               onClick={submitCheckIn}
               size="lg"

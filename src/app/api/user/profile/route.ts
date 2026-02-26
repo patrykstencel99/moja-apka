@@ -1,4 +1,4 @@
-import { CheckInPreference, Prisma, UserFocus } from '@prisma/client';
+import { CheckInPreference, Prisma, SocialPressureMode, UserFocus } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -12,6 +12,10 @@ const patchSchema = z.object({
   focus: z.nativeEnum(UserFocus).optional(),
   checkinPreference: z.nativeEnum(CheckInPreference).optional(),
   onboardingComplete: z.boolean().optional(),
+  notificationsEnabled: z.boolean().optional(),
+  slot1HourLocal: z.number().int().min(0).max(23).optional(),
+  slot2HourLocal: z.number().int().min(0).max(23).optional(),
+  socialPressureMode: z.nativeEnum(SocialPressureMode).optional(),
   themeKey: z.string().trim().min(1).optional(),
   displayName: z.string().trim().min(3).max(24).regex(/^[\p{L}\p{N}._-]+$/u).optional(),
   avatarUrl: z.string().trim().url().optional().nullable(),
@@ -26,6 +30,10 @@ export async function GET(request: NextRequest) {
       onboardingComplete: user.onboardingComplete,
       focus: user.focus,
       checkinPreference: user.checkinPreference,
+      notificationsEnabled: user.notificationsEnabled,
+      slot1HourLocal: user.slot1HourLocal,
+      slot2HourLocal: user.slot2HourLocal,
+      socialPressureMode: user.socialPressureMode,
       themeKey: user.themeKey,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
@@ -67,6 +75,10 @@ export async function PATCH(request: NextRequest) {
         focus: parsed.data.focus,
         checkinPreference: parsed.data.checkinPreference,
         onboardingComplete: parsed.data.onboardingComplete,
+        notificationsEnabled: parsed.data.notificationsEnabled,
+        slot1HourLocal: parsed.data.slot1HourLocal,
+        slot2HourLocal: parsed.data.slot2HourLocal,
+        socialPressureMode: parsed.data.socialPressureMode,
         themeKey: parsed.data.themeKey,
         displayName,
         displayNameNormalized,
@@ -79,6 +91,10 @@ export async function PATCH(request: NextRequest) {
       onboardingComplete: updated.onboardingComplete,
       focus: updated.focus,
       checkinPreference: updated.checkinPreference,
+      notificationsEnabled: updated.notificationsEnabled,
+      slot1HourLocal: updated.slot1HourLocal,
+      slot2HourLocal: updated.slot2HourLocal,
+      socialPressureMode: updated.socialPressureMode,
       themeKey: updated.themeKey,
       displayName: updated.displayName,
       avatarUrl: updated.avatarUrl,

@@ -18,6 +18,7 @@ import { getISOWeek, getISOWeekYear } from 'date-fns';
 
 import { inferActivityMeta } from '@/lib/activity-meta';
 import { dayDiff, formatLocalDate, parseLocalDate } from '@/lib/date';
+import { getEngagementTodayState } from '@/lib/engagement';
 import { levelFromXp } from '@/lib/gamification';
 import { prisma } from '@/lib/prisma';
 import { buildNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
@@ -28,6 +29,7 @@ import type {
   DuelDto,
   DuelResultDto,
   DuelStatusDto,
+  EngagementTodayDto,
   FunTodayPayload,
   StampDto,
   ThemeDto
@@ -71,6 +73,7 @@ type EvaluatedFunState = {
   bossWeek: BossWeekDto;
   duel: DuelDto | null;
   stamp: StampDto | null;
+  engagement: EngagementTodayDto;
 };
 
 const QUESTS_BY_FOCUS: Record<UserFocus, QuestTemplate[]> = {
@@ -737,7 +740,7 @@ export async function getTodayFunState(params: {
     }
   });
 
-  const [quest, bossWeek, stamp, duel, state] = await Promise.all([
+  const [quest, bossWeek, stamp, duel, state, engagement] = await Promise.all([
     ensureDailyQuest({
       userId: user.id,
       focus: user.focus,
@@ -758,7 +761,11 @@ export async function getTodayFunState(params: {
       localDate,
       activities
     }),
-    ensureGamificationState(user.id)
+    ensureGamificationState(user.id),
+    getEngagementTodayState({
+      user,
+      localDate
+    })
   ]);
 
   return {
@@ -769,7 +776,8 @@ export async function getTodayFunState(params: {
     },
     bossWeek: mapBossDto(bossWeek),
     duel: duel ? mapDuelDto(duel) : null,
-    stamp: mapStampDto(stamp)
+    stamp: mapStampDto(stamp),
+    engagement
   };
 }
 
@@ -847,6 +855,10 @@ export async function evaluateFunAfterCheckIn(params: {
     targetTier: targetStampTier
   });
 
+  const freshUser = await prisma.user.findUniqueOrThrow({
+    where: { id: user.id }
+  });
+
   return {
     quest: mapQuestDto(quest),
     combo: {
@@ -855,7 +867,11 @@ export async function evaluateFunAfterCheckIn(params: {
     },
     bossWeek: mapBossDto(bossWeek),
     duel: mapDuelDto(duel),
-    stamp: mapStampDto(stamp)
+    stamp: mapStampDto(stamp),
+    engagement: await getEngagementTodayState({
+      user: freshUser,
+      localDate
+    })
   };
 }
 
@@ -884,6 +900,26 @@ export async function selectDuelOption(params: {
       status: DuelStatus.SELECTED,
       selectedChoice: params.choice,
       selectedAt: new Date()
+    }
+  });
+
+  const selectedMicroStep =
+    params.choice === DuelChoice.A ? updated.optionAMinimalVariant : updated.optionBMinimalVariant;
+
+  await prisma.engagementDailyState.upsert({
+    where: {
+      userId_localDate: {
+        userId: params.user.id,
+        localDate: updated.localDate
+      }
+    },
+    create: {
+      userId: params.user.id,
+      localDate: updated.localDate,
+      nextMicroStep: selectedMicroStep
+    },
+    update: {
+      nextMicroStep: selectedMicroStep
     }
   });
 

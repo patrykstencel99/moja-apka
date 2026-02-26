@@ -2661,6 +2661,72 @@ html.route-transitioning .page-shell::after {
   font-weight: 700;
 }
 
+.tutorial-companion {
+  backdrop-filter: blur(10px);
+  background: linear-gradient(160deg, rgba(12, 18, 30, 0.94) 0%, rgba(21, 30, 48, 0.92) 100%);
+  border: 1px solid rgba(200, 163, 93, 0.3);
+  border-radius: var(--radius-lg);
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  box-shadow:
+    0 24px 48px rgba(8, 10, 16, 0.42),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  color: var(--text-inverse);
+  display: grid;
+  gap: var(--space-3);
+  max-width: min(380px, calc(100vw - 1.25rem));
+  padding: var(--space-4);
+  position: fixed;
+  right: max(0.9rem, env(safe-area-inset-right));
+  width: 100%;
+  z-index: 80;
+}
+
+.tutorial-companion p,
+.tutorial-companion h3 {
+  margin: 0;
+}
+
+.tutorial-companion h3 {
+  font-size: clamp(1.02rem, 1.6vw, 1.2rem);
+}
+
+.tutorial-companion__header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.tutorial-companion__badge {
+  background: rgba(200, 163, 93, 0.18);
+  border: 1px solid rgba(200, 163, 93, 0.36);
+  border-radius: 999px;
+  color: #f6d899;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
+  text-transform: uppercase;
+}
+
+.tutorial-companion__progress {
+  color: rgba(241, 246, 255, 0.78);
+  font-size: var(--text-sm);
+}
+
+.tutorial-companion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.tutorial-companion__actions .ui-btn {
+  min-width: 102px;
+}
+
+.tutorial-companion__error {
+  color: #f2a4a4;
+}
+
 @media (max-width: 1020px) {
   main {
     padding: 0.75rem;
@@ -2778,6 +2844,13 @@ html.route-transitioning .page-shell::after {
     left: calc(var(--px) - 54px);
     top: calc(var(--py) - 54px);
     width: 108px;
+  }
+
+  .tutorial-companion {
+    left: 0.75rem;
+    max-width: none;
+    right: 0.75rem;
+    width: auto;
   }
 }
 

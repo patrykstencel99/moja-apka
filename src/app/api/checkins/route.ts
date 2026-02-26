@@ -6,6 +6,8 @@ import { decorateActivity } from '@/lib/activity-meta';
 import { updateCompetitionAfterCheckIn } from '@/lib/competition';
 import { apiCopy } from '@/lib/copy';
 import { formatLocalDate } from '@/lib/date';
+import { applyComebackBonus, upsertEngagementAfterCheckIn } from '@/lib/engagement';
+import { isUserInEngagementLoopV1 } from '@/lib/engagement-flags';
 import { evaluateFunAfterCheckIn } from '@/lib/fun';
 import { updateGamificationAfterCheckIn } from '@/lib/gamification';
 import { jsonError } from '@/lib/http';
@@ -205,12 +207,31 @@ export async function POST(request: NextRequest) {
       return created;
     });
 
+    const engagementEnabled = isUserInEngagementLoopV1(user.id);
+    const engagementUpdate = engagementEnabled
+      ? await upsertEngagementAfterCheckIn({
+          userId: user.id,
+          localDate,
+          createdAt,
+          timezone: user.timezone,
+          slot2HourLocal: user.slot2HourLocal
+        })
+      : null;
+
     await updateGamificationAfterCheckIn({
       userId: user.id,
       localDate,
       createdAt,
-      userTimeZone: user.timezone
+      userTimeZone: user.timezone,
+      xpDelta: engagementUpdate?.xpDelta
     });
+
+    if (engagementUpdate?.rescueCompletedNow) {
+      await applyComebackBonus({
+        userId: user.id,
+        localDate
+      });
+    }
 
     await updateCompetitionAfterCheckIn(user.id);
 
@@ -241,7 +262,8 @@ export async function POST(request: NextRequest) {
       {
         checkIn,
         activityMetadata: activities.map((activity) => decorateActivity(activity)),
-        fun
+        fun,
+        engagement: fun?.engagement ?? null
       },
       { status: 201 }
     );

@@ -64,6 +64,18 @@ enum CheckInPreference {
   LATER
 }
 
+enum SocialPressureMode {
+  STRONG
+  SOFT
+}
+
+enum PushDispatchStatus {
+  PENDING
+  RETRY_PENDING
+  DELIVERED
+  FAILED
+}
+
 enum QuestStatus {
   PENDING
   COMPLETED
@@ -94,6 +106,22 @@ enum DuelResult {
   WORSE
 }
 
+enum TutorialState {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum TutorialEventType {
+  STARTED
+  STEP_SHOWN
+  STEP_COMPLETED
+  SKIPPED
+  COMPLETED
+  RESTARTED
+}
+
 model User {
   id                  String               @id @default(cuid())
   createdAt           DateTime             @default(now())
@@ -108,6 +136,11 @@ model User {
   onboardingComplete  Boolean              @default(false)
   focus               UserFocus            @default(ENERGY)
   checkinPreference   CheckInPreference    @default(EVENING)
+  notificationsEnabled Boolean             @default(false)
+  slot1HourLocal      Int                  @default(8)
+  slot2HourLocal      Int                  @default(20)
+  socialPressureMode  SocialPressureMode   @default(STRONG)
+  socialPressureCooldownUntil DateTime?
   themeKey            String               @default("obsidian-command")
   failedLoginAttempts Int                  @default(0)
   lockedUntil         DateTime?
@@ -122,6 +155,11 @@ model User {
   bossWeeks           BossWeek[]
   nextMoveDuels       NextMoveDuel[]
   dailyStamps         DailyStamp[]
+  pushSubscriptions   PushSubscription[]
+  pushDispatches      PushDispatch[]
+  engagementStates    EngagementDailyState[]
+  tutorialProgress    TutorialProgress[]
+  tutorialEvents      TutorialEvent[]
 }
 
 model Session {
@@ -134,6 +172,46 @@ model Session {
 
   @@index([userId])
   @@index([expiresAt])
+}
+
+model PushSubscription {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String
+  p256dh     String
+  auth       String
+  userAgent  String?
+  failCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  updatedAt  DateTime  @updatedAt
+  dispatches PushDispatch[]
+
+  @@unique([userId, endpoint])
+  @@index([userId, revokedAt])
+}
+
+model PushDispatch {
+  id             String            @id @default(cuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   PushSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  localDate      String
+  reminderType   String
+  payload        Json
+  status         PushDispatchStatus @default(PENDING)
+  attemptCount   Int               @default(0)
+  nextAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  lastError      String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([userId, localDate, status])
 }
 
 model ActivityDefinition {
@@ -168,6 +246,31 @@ model CheckIn {
   @@index([userId, createdAt])
   @@index([userId, localDate])
   @@unique([userId, clientEventId])
+}
+
+model EngagementDailyState {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  localDate        String
+  slot1Done        Boolean   @default(false)
+  slot2Done        Boolean   @default(false)
+  slot1CompletedAt DateTime?
+  slot2CompletedAt DateTime?
+  perfectDay       Boolean   @default(false)
+  pushCount        Int       @default(0)
+  lastPushAt       DateTime?
+  comebackEligible Boolean   @default(false)
+  rescueQuestActive Boolean  @default(false)
+  rescueCompletedAt DateTime?
+  rescueBonusGranted Boolean @default(false)
+  comebackGapDays  Int?
+  nextMicroStep    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([userId, localDate])
+  @@index([userId, localDate, perfectDay])
 }
 
 model JournalNote {
@@ -338,4 +441,38 @@ model DailyStamp {
 
   @@unique([userId, localDate])
   @@index([userId, localDate, tier])
+}
+
+model TutorialProgress {
+  id               String        @id @default(cuid())
+  userId           String        @unique
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tutorialKey      String
+  version          Int
+  state            TutorialState @default(NOT_STARTED)
+  currentStepId    String?
+  completedStepIds Json
+  startedAt        DateTime?
+  firstCheckinAt   DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([tutorialKey, version, state])
+}
+
+model TutorialEvent {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tutorialKey String
+  version     Int
+  eventType   TutorialEventType
+  stepId      String?
+  route       String?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+
+  @@index([userId, createdAt])
+  @@index([tutorialKey, version, eventType, createdAt])
 }
