@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 import { uiCopy } from '@/lib/copy';
 
-type NavHref = '/today' | '/systems' | '/review' | '/journal' | '/experiments' | '/settings';
+type NavHref = '/today' | '/systems' | '/review' | '/competition' | '/journal' | '/experiments' | '/settings';
 
 export function NavBar() {
   const pathname = usePathname();
@@ -14,7 +14,8 @@ export function NavBar() {
   const primaryLinks: Array<{ href: NavHref; label: string }> = [
     { href: '/today', label: uiCopy.nav.today },
     { href: '/systems', label: uiCopy.nav.systems },
-    { href: '/review', label: uiCopy.nav.review }
+    { href: '/review', label: uiCopy.nav.review },
+    { href: '/competition', label: uiCopy.nav.competition }
   ];
   const secondaryLinks: Array<{ href: NavHref; label: string }> = [
     { href: '/journal', label: uiCopy.nav.journal },

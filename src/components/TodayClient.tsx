@@ -12,8 +12,8 @@ import { RangeField } from '@/components/ui/RangeField';
 import { StatTile } from '@/components/ui/StatTile';
 import { uiCopy } from '@/lib/copy';
 import { enqueueCheckIn, flushQueuedCheckIns } from '@/lib/offline-queue';
-import { appendExperiment, readActiveNextMove, type NextMoveRecord, writeActiveNextMove } from '@/lib/state/local-storage';
-import { buildNextMove, type GeneratedNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
+import { buildNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
+import type { DuelDto, FunTodayPayload } from '@/types/fun';
 
 type Focus = 'ENERGY' | 'FOCUS' | 'SLEEP';
 type CheckinPreference = 'MORNING' | 'EVENING' | 'LATER';
@@ -66,12 +66,6 @@ type YearMonthRow = {
   days: YearDay[];
 };
 
-const SKIP_REASON_OPTIONS: Array<{ id: NextMoveRecord['skipReason']; label: string }> = [
-  { id: 'brak-czasu', label: uiCopy.today.skipReasons.noTime },
-  { id: 'zly-moment', label: uiCopy.today.skipReasons.outsideControl },
-  { id: 'niska-wiara', label: uiCopy.today.skipReasons.lowPriority }
-];
-
 const FOCUS_LABEL: Record<Focus, string> = {
   ENERGY: 'Energia',
   FOCUS: 'Skupienie',
@@ -84,18 +78,22 @@ const PREFERENCE_LABEL: Record<CheckinPreference, string> = {
   LATER: 'Ustawie pozniej'
 };
 
-const QUICK_SIGNAL_BY_FOCUS: Record<Focus, string[]> = {
+const QUICK_SIGNAL_BY_FOCUS: Record<Focus, string[][]> = {
   ENERGY: [
-    'Spadek energii przed 14:00',
-    'Pierwszy posilek do 90 min od pobudki',
-    'Nawodnienie do poludnia'
+    ['Spadek energii przed 14:00'],
+    ['Pierwszy posilek do 90 min od pobudki'],
+    ['Nawodnienie do poludnia']
   ],
   FOCUS: [
-    '60 min glebokiej pracy przed poludniem',
-    'Plan jednego priorytetu dnia',
-    'Powiadomienia wyciszone podczas bloku'
+    ['60 minut glebokiej pracy przed poludniem', '60 min glebokiej pracy przed poludniem'],
+    ['Plan jednego priorytetu dnia'],
+    ['Notyfikacje wyciszone podczas bloku', 'Powiadomienia wyciszone podczas bloku']
   ],
-  SLEEP: ['Brak ekranu 45 min przed snem', 'Godzina snu zgodna z planem', 'Poranne odswiezenie']
+  SLEEP: [
+    ['Brak ekranu 45 minut przed snem', 'Brak ekranu 45 min przed snem'],
+    ['Godzina snu zgodna z planem'],
+    ['Poranny poziom odswiezenia (0-10)', 'Poranne odswiezenie']
+  ]
 };
 
 function todayLocalDate() {
@@ -177,12 +175,8 @@ export function TodayClient() {
   const [selectedFocus, setSelectedFocus] = useState<Focus>('ENERGY');
   const [selectedPreference, setSelectedPreference] = useState<CheckinPreference>('EVENING');
   const [captureOpen, setCaptureOpen] = useState(true);
-
-  const [pendingMove, setPendingMove] = useState<GeneratedNextMove | null>(null);
-  const [activeMove, setActiveMove] = useState<NextMoveRecord | null>(null);
-  const [showSkipReasons, setShowSkipReasons] = useState(false);
-  const [variantIndex, setVariantIndex] = useState(0);
-  const [lastSignals, setLastSignals] = useState<NextMoveInputSignal[]>([]);
+  const [funState, setFunState] = useState<FunTodayPayload | null>(null);
+  const [isSelectingDuel, setIsSelectingDuel] = useState<'A' | 'B' | null>(null);
 
   const [seedStatus, setSeedStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
   const [overlayBusy, setOverlayBusy] = useState(false);
@@ -308,20 +302,21 @@ export function TodayClient() {
   const load = useCallback(async () => {
     setError(null);
 
-    const [profileRes, activitiesRes, checkinsRes, yearRes, gamRes] = await Promise.all([
+    const [profileRes, activitiesRes, checkinsRes, yearRes, gamRes, funRes] = await Promise.all([
       fetch('/api/user/profile', { cache: 'no-store' }),
       fetch('/api/setup/activities', { cache: 'no-store' }),
       fetch(`/api/checkins?from=${localDate}&to=${localDate}`, { cache: 'no-store' }),
       fetch(`/api/checkins?from=${yearRange.from}&to=${yearRange.to}`, { cache: 'no-store' }),
-      fetch('/api/gamification/status', { cache: 'no-store' })
+      fetch('/api/gamification/status', { cache: 'no-store' }),
+      fetch(`/api/fun/today?date=${localDate}`, { cache: 'no-store' })
     ]);
 
-    if ([profileRes, activitiesRes, checkinsRes, yearRes, gamRes].some((response) => response.status === 401)) {
+    if ([profileRes, activitiesRes, checkinsRes, yearRes, gamRes, funRes].some((response) => response.status === 401)) {
       await handleUnauthorized();
       return;
     }
 
-    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !yearRes.ok || !gamRes.ok) {
+    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !yearRes.ok || !gamRes.ok || !funRes.ok) {
       setError(uiCopy.today.daySyncError);
       return;
     }
@@ -331,6 +326,7 @@ export function TodayClient() {
     const checkinsData = (await checkinsRes.json()) as CheckInsResponse;
     const yearData = (await yearRes.json()) as CheckInsResponse;
     const gamData = (await gamRes.json()) as GamificationStatus;
+    const funData = (await funRes.json().catch(() => null)) as FunTodayPayload | null;
 
     if (profileData) {
       setProfile(profileData);
@@ -342,6 +338,7 @@ export function TodayClient() {
     setCheckins(checkinsData.checkIns);
     setYearCheckins(yearData.checkIns);
     setGamification(gamData);
+    setFunState(funData);
     updateValuesFromActivities(activitiesData.activities);
 
     const shouldShowWelcome =
@@ -350,7 +347,6 @@ export function TodayClient() {
   }, [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed, yearRange.from, yearRange.to]);
 
   useEffect(() => {
-    setActiveMove(readActiveNextMove());
     void load();
   }, [load]);
 
@@ -409,11 +405,11 @@ export function TodayClient() {
       return [] as Activity[];
     }
 
-    const preferredNames = QUICK_SIGNAL_BY_FOCUS[profile.focus];
-    const byName = new Map(activities.map((activity) => [activity.name, activity]));
+    const preferredAliases = QUICK_SIGNAL_BY_FOCUS[profile.focus];
+    const byName = new Map(activities.map((activity) => [activity.name.toLowerCase(), activity]));
 
-    const preferred = preferredNames
-      .map((name) => byName.get(name))
+    const preferred = preferredAliases
+      .map((aliases) => aliases.map((name) => byName.get(name.toLowerCase())).find(Boolean))
       .filter((activity): activity is Activity => Boolean(activity));
 
     if (preferred.length >= 3) {
@@ -421,7 +417,12 @@ export function TodayClient() {
     }
 
     const remaining = [...activities]
-      .filter((activity) => !preferredNames.includes(activity.name))
+      .filter(
+        (activity) =>
+          !preferredAliases.some((aliases) =>
+            aliases.some((alias) => alias.toLowerCase() === activity.name.toLowerCase())
+          )
+      )
       .sort((a, b) => (b.priority ?? 50) - (a.priority ?? 50));
 
     return [...preferred, ...remaining].slice(0, 3);
@@ -497,6 +498,55 @@ export function TodayClient() {
     [localDate, pathname]
   );
 
+  const buildOfflineDuel = useCallback(
+    (signals: NextMoveInputSignal[]): DuelDto => {
+      const optionA = buildNextMove({
+        mood,
+        energy,
+        signals,
+        variantIndex: 0
+      });
+      let optionB = buildNextMove({
+        mood,
+        energy,
+        signals,
+        variantIndex: 1
+      });
+
+      if (optionA.title === optionB.title) {
+        optionB = buildNextMove({
+          mood,
+          energy,
+          signals,
+          variantIndex: 2
+        });
+      }
+
+      return {
+        id: `offline-duel-${Date.now()}`,
+        localDate,
+        status: 'PENDING_SELECTION',
+        optionA: {
+          title: optionA.title,
+          why: optionA.why,
+          minimalVariant: optionA.minimalVariant,
+          confidence: optionA.confidence,
+          lag: optionA.lag
+        },
+        optionB: {
+          title: optionB.title,
+          why: optionB.why,
+          minimalVariant: optionB.minimalVariant,
+          confidence: optionB.confidence,
+          lag: optionB.lag
+        },
+        selectedChoice: null,
+        result: null
+      };
+    },
+    [energy, localDate, mood]
+  );
+
   const submitCheckIn = async () => {
     if (isSubmittingCheckIn) {
       return;
@@ -552,6 +602,39 @@ export function TodayClient() {
         setCheckins((prev) => [...prev, offlineEntry]);
         setYearCheckins((prev) => [...prev, offlineEntry]);
         setInfo(uiCopy.today.offlineSavedInfo);
+
+        setFunState((prev) => {
+          if (!prev) {
+            return {
+              quest: {
+                id: `offline-quest-${localDate}`,
+                localDate,
+                status: 'PENDING',
+                title: 'Offline: utrzymaj rytm check-inu',
+                description: 'Po reconnectu system zsynchronizuje dane i przeliczy quest.',
+                rewardXp: 20,
+                completedAt: null
+              },
+              combo: {
+                comboBps: 100,
+                displayMultiplier: 1
+              },
+              bossWeek: {
+                weekKey: 'offline',
+                hpCurrent: 7,
+                hpMax: 7,
+                cleared: false,
+                clearedAt: null
+              },
+              duel: buildOfflineDuel(captureSignals),
+              stamp: null
+            };
+          }
+          return {
+            ...prev,
+            duel: buildOfflineDuel(captureSignals)
+          };
+        });
       } else {
         const response = await fetch('/api/checkins', {
           method: 'POST',
@@ -573,24 +656,17 @@ export function TodayClient() {
           return;
         }
 
-        await load();
+        const data = (await response.json().catch(() => null)) as { fun?: FunTodayPayload } | null;
+        if (data?.fun) {
+          setFunState(data.fun);
+        } else {
+          await load();
+        }
       }
 
       setJournal('');
-      setShowSkipReasons(false);
-      setVariantIndex(0);
-      setLastSignals(captureSignals);
-
-      const suggestion = buildNextMove({
-        mood,
-        energy,
-        signals: captureSignals,
-        variantIndex: 0
-      });
-
-      setPendingMove(suggestion);
       setCaptureOpen(false);
-      setInfo('Check-in zapisany. Kolejny krok gotowy.');
+      setInfo('Check-in zapisany. Wybierz jeden wariant Next Move.');
 
       if (profile && !profile.onboardingComplete) {
         await saveProfile({ onboardingComplete: true });
@@ -605,53 +681,55 @@ export function TodayClient() {
     }
   };
 
-  const finalizeDecision = (decision: NextMoveRecord['decision'], skipReason?: NextMoveRecord['skipReason']) => {
-    if (!pendingMove) {
+  const selectDuelOption = async (choice: 'A' | 'B') => {
+    if (!funState?.duel || funState.duel.status !== 'PENDING_SELECTION' || isSelectingDuel) {
       return;
     }
 
-    const record: NextMoveRecord = {
-      id: pendingMove.id,
-      title: pendingMove.title,
-      why: pendingMove.why,
-      minimalVariant: pendingMove.minimalVariant,
-      confidence: pendingMove.confidence,
-      lag: pendingMove.lag,
-      createdAt: new Date().toISOString(),
-      localDate,
-      decision,
-      skipReason
-    };
+    setIsSelectingDuel(choice);
+    setError(null);
 
-    appendExperiment(record);
-
-    if (decision === 'skipped') {
-      writeActiveNextMove(null);
-      setActiveMove(null);
-    } else {
-      writeActiveNextMove(record);
-      setActiveMove(record);
+    if (funState.duel.id.startsWith('offline-duel-')) {
+      setFunState((prev) => {
+        if (!prev?.duel) {
+          return prev;
+        }
+        return {
+          ...prev,
+          duel: {
+            ...prev.duel,
+            status: 'SELECTED',
+            selectedChoice: choice
+          }
+        };
+      });
+      setInfo('Tryb offline: wybor duelu zapisany lokalnie.');
+      setIsSelectingDuel(null);
+      return;
     }
 
-    setPendingMove(null);
-    setShowSkipReasons(false);
-    setInfo(uiCopy.today.nextStepSetInfo);
-  };
-
-  const swapDecision = () => {
-    const nextVariant = variantIndex + 1;
-    setVariantIndex(nextVariant);
-
-    const suggestion = buildNextMove({
-      mood,
-      energy,
-      signals: lastSignals.length > 0 ? lastSignals : captureSignals,
-      variantIndex: nextVariant
+    const response = await fetch('/api/fun/duel/select', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        duelId: funState.duel.id,
+        choice
+      })
     });
 
-    setPendingMove(suggestion);
-    setShowSkipReasons(false);
-    setInfo('Pokazalem inna propozycje.');
+    const payload = (await response.json().catch(() => ({}))) as { duel?: DuelDto; error?: string };
+    if (!response.ok || !payload.duel) {
+      setError(payload.error ?? 'Nie udalo sie zapisac wyboru duelu.');
+      setIsSelectingDuel(null);
+      return;
+    }
+
+    setFunState((prev) => (prev ? { ...prev, duel: payload.duel ?? prev.duel } : prev));
+    setInfo('Next Move ustawione.');
+    setIsSelectingDuel(null);
+    await load();
   };
 
   const runWelcome = async () => {
@@ -874,7 +952,7 @@ export function TodayClient() {
       )}
 
       <Card tone="elevated" title={uiCopy.today.dayStatus.title} subtitle={uiCopy.today.dayStatus.subtitle}>
-        <div className="grid grid-3 compact-grid">
+        <div className="grid grid-4 compact-grid">
           <StatTile
             label={uiCopy.today.dayStatus.progressLabel}
             value={`${Math.min(checkins.length, 3)}/3`}
@@ -891,6 +969,12 @@ export function TodayClient() {
             value={gamification?.level ?? 1}
             hint={uiCopy.today.dayStatus.xpHintTemplate.replace('{xp}', String(gamification?.totalXp ?? 0))}
           />
+          <StatTile
+            label="Combo"
+            value={`x${funState?.combo.displayMultiplier.toFixed(1) ?? '1.0'}`}
+            hint={`BPS: ${funState?.combo.comboBps ?? 100}`}
+            trend={(funState?.combo.comboBps ?? 100) > 150 ? 'up' : 'neutral'}
+          />
         </div>
       </Card>
 
@@ -899,6 +983,53 @@ export function TodayClient() {
           {uiCopy.today.banners.tuneBodyLead} <Link href="/systems">{uiCopy.today.banners.tuneBodyLink}</Link>
         </Banner>
       )}
+
+      <div className="grid grid-2">
+        <Card tone="elevated" title="Daily Quest" subtitle={funState?.quest.localDate ?? localDate}>
+          {funState?.quest ? (
+            <div className="stack-sm">
+              <p>
+                <strong>{funState.quest.title}</strong>
+              </p>
+              <small>{funState.quest.description}</small>
+              <small>Status: {funState.quest.status}</small>
+              <small>
+                Reward: {funState.quest.rewardXp} XP {funState.quest.status === 'COMPLETED' ? '(zaliczony)' : ''}
+              </small>
+              <small>Stamp dnia: {funState.stamp?.tier ?? 'BRAK'}</small>
+            </div>
+          ) : (
+            <div className="empty-state">Quest pojawi sie po odswiezeniu danych.</div>
+          )}
+        </Card>
+
+        <Card tone="elevated" title="Boss Week" subtitle={funState?.bossWeek.weekKey ?? '---'}>
+          {funState?.bossWeek ? (
+            <div className="stack-sm">
+              <div className="boss-progress">
+                <div
+                  className="boss-progress__fill"
+                  style={{
+                    width: `${Math.max(
+                      0,
+                      Math.min(
+                        100,
+                        ((funState.bossWeek.hpMax - funState.bossWeek.hpCurrent) / Math.max(1, funState.bossWeek.hpMax)) * 100
+                      )
+                    )}%`
+                  }}
+                />
+              </div>
+              <small>
+                HP: {funState.bossWeek.hpCurrent}/{funState.bossWeek.hpMax}
+              </small>
+              <small>{funState.bossWeek.cleared ? 'Boss pokonany: +50 XP' : 'Domknij questy dnia, aby zbic HP.'}</small>
+            </div>
+          ) : (
+            <div className="empty-state">Status bossa pojawi sie po odswiezeniu danych.</div>
+          )}
+        </Card>
+      </div>
 
       <Card
         tone="elevated"
@@ -976,61 +1107,62 @@ export function TodayClient() {
         )}
       </Card>
 
-      <Card
-        tone="strong"
-        title={uiCopy.today.nextStep.title}
-        subtitle={pendingMove ? uiCopy.today.nextStep.pendingSubtitle : uiCopy.today.nextStep.waitingSubtitle}
-      >
-        {pendingMove ? (
+      <Card tone="strong" title="Next Move Duel" subtitle="Po check-inie wybierasz 1 z 2 wariantow.">
+        {funState?.duel ? (
           <div className="stack">
-            <div className="panel-subtle">
-              <p>
-                {uiCopy.today.nextStep.rationalePrefix} <strong>{pendingMove.title}</strong> {uiCopy.today.nextStep.rationaleSuffix}
-              </p>
-              <small>{uiCopy.today.nextStep.hypothesisHint}</small>
-              <small>
-                {uiCopy.today.nextStep.minimalVariantPrefix} <strong>{pendingMove.minimalVariant}</strong>
-              </small>
+            <div className="grid grid-2">
+              <Card
+                title={`Wariant A${funState.duel.selectedChoice === 'A' ? ' (wybrany)' : ''}`}
+                subtitle={`Confidence ${funState.duel.optionA.confidence}% • lag ${funState.duel.optionA.lag}d`}
+              >
+                <p>
+                  <strong>{funState.duel.optionA.title}</strong>
+                </p>
+                <small>{funState.duel.optionA.why}</small>
+                <small>{funState.duel.optionA.minimalVariant}</small>
+              </Card>
+              <Card
+                title={`Wariant B${funState.duel.selectedChoice === 'B' ? ' (wybrany)' : ''}`}
+                subtitle={`Confidence ${funState.duel.optionB.confidence}% • lag ${funState.duel.optionB.lag}d`}
+              >
+                <p>
+                  <strong>{funState.duel.optionB.title}</strong>
+                </p>
+                <small>{funState.duel.optionB.why}</small>
+                <small>{funState.duel.optionB.minimalVariant}</small>
+              </Card>
             </div>
 
-            <div className="decision-actions daily-decision-actions">
-              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={() => finalizeDecision('accepted')} variant="primary">
-                {uiCopy.today.nextStep.accept}
-              </Button>
-              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={swapDecision} variant="secondary">
-                {uiCopy.today.nextStep.swap}
-              </Button>
-              <Button className="daily-action-btn" disabled={isSubmittingCheckIn} onClick={() => setShowSkipReasons(true)} variant="ghost">
-                {uiCopy.today.nextStep.skip}
-              </Button>
-            </div>
-
-            {showSkipReasons && (
+            {funState.duel.status === 'PENDING_SELECTION' ? (
               <div className="decision-actions daily-decision-actions">
-                {SKIP_REASON_OPTIONS.map((option) => (
-                  <Button
-                    className="daily-action-btn"
-                    disabled={isSubmittingCheckIn}
-                    key={option.id}
-                    onClick={() => finalizeDecision('skipped', option.id)}
-                    size="sm"
-                    variant="ghost"
-                  >
-                    {option.label}
-                  </Button>
-                ))}
+                <Button
+                  className="daily-action-btn"
+                  disabled={isSelectingDuel !== null}
+                  onClick={() => void selectDuelOption('A')}
+                  variant="primary"
+                >
+                  {isSelectingDuel === 'A' ? 'Zapisywanie...' : 'Biorę wariant A'}
+                </Button>
+                <Button
+                  className="daily-action-btn"
+                  disabled={isSelectingDuel !== null}
+                  onClick={() => void selectDuelOption('B')}
+                  variant="secondary"
+                >
+                  {isSelectingDuel === 'B' ? 'Zapisywanie...' : 'Biorę wariant B'}
+                </Button>
+              </div>
+            ) : (
+              <div className="panel-subtle">
+                <small>
+                  Status duelu: <strong>{funState.duel.status}</strong>
+                </small>
+                <small>Wybor zapisany. Wynik oznaczysz jutro w zakladce Eksperymenty.</small>
               </div>
             )}
           </div>
-        ) : activeMove ? (
-          <div className="panel-subtle">
-            <p>
-              <strong>{activeMove.title}</strong>
-            </p>
-            <small>{activeMove.minimalVariant}</small>
-          </div>
         ) : (
-          <div className="empty-state">{uiCopy.today.nextStep.emptyState}</div>
+          <div className="empty-state">Po zapisaniu check-inu wygeneruje sie duel A/B.</div>
         )}
       </Card>
 

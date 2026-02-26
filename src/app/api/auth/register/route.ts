@@ -2,8 +2,10 @@ import { randomBytes } from 'crypto';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 
 import { apiCopy } from '@/lib/copy';
+import { normalizeProfileName } from '@/lib/competition';
 import { databaseSetupMessage, isDatabaseConnectionError } from '@/lib/db-errors';
 import { hashPassword } from '@/lib/password';
 import { prisma } from '@/lib/prisma';
@@ -13,6 +15,7 @@ import { hashSessionToken, SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib
 const schema = z
   .object({
     email: z.string().email(),
+    displayName: z.string().trim().min(3).max(24).regex(/^[\p{L}\p{N}._-]+$/u),
     password: z.string().min(8).max(128),
     confirmPassword: z.string().min(8).max(128)
   })
@@ -39,49 +42,32 @@ export async function POST(request: NextRequest) {
     }
 
     const email = parsed.data.email.trim().toLowerCase();
+    const displayName = parsed.data.displayName.trim();
+    const displayNameNormalized = normalizeProfileName(displayName);
     const passwordHash = await hashPassword(parsed.data.password);
-
-    const claimedUsers = await prisma.user.count({
-      where: {
-        email: {
-          not: null
-        }
-      }
-    });
-
-    if (claimedUsers > 0) {
-      return NextResponse.json({ error: apiCopy.auth.firstAccountExists }, { status: 403 });
-    }
 
     const existingByEmail = await prisma.user.findUnique({ where: { email } });
     if (existingByEmail) {
       return NextResponse.json({ error: apiCopy.auth.emailTaken }, { status: 409 });
     }
 
-    const placeholder = await prisma.user.findFirst({
-      where: {
-        email: null
-      },
-      orderBy: { createdAt: 'asc' }
+    const existingByName = await prisma.user.findUnique({
+      where: { displayNameNormalized }
     });
+    if (existingByName) {
+      return NextResponse.json({ error: apiCopy.auth.displayNameTaken }, { status: 409 });
+    }
 
-    const user = placeholder
-      ? await prisma.user.update({
-          where: { id: placeholder.id },
-          data: {
-            email,
-            passwordHash,
-            failedLoginAttempts: 0,
-            lockedUntil: null
-          }
-        })
-      : await prisma.user.create({
-          data: {
-            email,
-            passwordHash,
-            timezone: 'Europe/Warsaw'
-          }
-        });
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        displayName,
+        displayNameNormalized,
+        avatarSeed: displayNameNormalized,
+        timezone: 'Europe/Warsaw'
+      }
+    });
 
     await prisma.gamificationState.upsert({
       where: { userId: user.id },
@@ -115,6 +101,10 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ error: apiCopy.auth.displayNameTaken }, { status: 409 });
+    }
+
     if (isDatabaseConnectionError(error)) {
       return NextResponse.json({ error: databaseSetupMessage() }, { status: 503 });
     }

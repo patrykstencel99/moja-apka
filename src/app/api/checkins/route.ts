@@ -3,8 +3,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { requireApiUser } from '@/lib/auth';
 import { decorateActivity } from '@/lib/activity-meta';
+import { updateCompetitionAfterCheckIn } from '@/lib/competition';
 import { apiCopy } from '@/lib/copy';
 import { formatLocalDate } from '@/lib/date';
+import { evaluateFunAfterCheckIn } from '@/lib/fun';
 import { updateGamificationAfterCheckIn } from '@/lib/gamification';
 import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
@@ -163,6 +165,22 @@ export async function POST(request: NextRequest) {
       userTimeZone: user.timezone
     });
 
+    await updateCompetitionAfterCheckIn(user.id);
+
+    let fun: Awaited<ReturnType<typeof evaluateFunAfterCheckIn>> | null = null;
+    try {
+      fun = await evaluateFunAfterCheckIn({
+        user,
+        localDate,
+        checkInId: checkIn.id,
+        mood: payload.mood,
+        energy: payload.energy,
+        values: payload.values
+      });
+    } catch {
+      fun = null;
+    }
+
     if (!user.onboardingComplete) {
       await prisma.user.update({
         where: { id: user.id },
@@ -175,7 +193,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         checkIn,
-        activityMetadata: activities.map((activity) => decorateActivity(activity))
+        activityMetadata: activities.map((activity) => decorateActivity(activity)),
+        fun
       },
       { status: 201 }
     );

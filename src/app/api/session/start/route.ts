@@ -33,18 +33,6 @@ export async function POST(request: NextRequest) {
     }
 
     const email = parsed.data.email.trim().toLowerCase();
-    const claimedUsers = await prisma.user.count({
-      where: {
-        email: {
-          not: null
-        }
-      }
-    });
-
-    if (claimedUsers === 0) {
-      return NextResponse.json({ error: apiCopy.auth.firstAccountRequired }, { status: 403 });
-    }
-
     const user = await prisma.user.findUnique({
       where: { email }
     });

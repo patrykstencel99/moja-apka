@@ -1,4 +1,6 @@
-:root[data-theme='pf-premium'] {
+:root[data-theme='pf-premium'],
+:root[data-theme='obsidian-command'],
+:root {
   --bg-canvas: var(--color-ivory);
   --bg-overlay: rgba(10, 10, 11, 0.06);
   --bg-panel: rgba(255, 255, 255, 0.88);
@@ -38,4 +40,76 @@
   --topography-line-a: rgba(185, 190, 200, 0.2);
   --topography-line-b: rgba(200, 163, 93, 0.12);
   --topography-glow: radial-gradient(circle at 80% 0%, rgba(200, 163, 93, 0.16) 0%, transparent 52%);
+}
+
+:root[data-theme='ivory-ledger'] {
+  --bg-canvas: #f8f5ef;
+  --bg-panel: rgba(255, 255, 252, 0.9);
+  --bg-panel-elevated: rgba(255, 255, 255, 0.96);
+  --line-focus: rgba(140, 114, 72, 0.5);
+  --accent-primary: #8c7248;
+  --accent-secondary: #7b8aa6;
+  --button-primary-bg: linear-gradient(95deg, #9e8456 0%, #b99960 65%, #cfb07a 100%);
+  --button-ghost-fg: #48566d;
+}
+
+:root[data-theme='royal-blueprint'] {
+  --bg-canvas: #f2f6ff;
+  --bg-panel: rgba(255, 255, 255, 0.9);
+  --bg-panel-elevated: rgba(255, 255, 255, 0.97);
+  --line-focus: rgba(30, 63, 174, 0.52);
+  --accent-primary: #1e3fae;
+  --accent-secondary: #5b3a75;
+  --button-primary-bg: linear-gradient(95deg, #1b3caa 0%, #365cce 60%, #5377e2 100%);
+  --button-primary-fg: #f5f8ff;
+  --button-ghost-bg: rgba(30, 63, 174, 0.1);
+  --button-ghost-fg: #1e3fae;
+}
+
+:root[data-theme='burgundy-arc'] {
+  --bg-canvas: #faf3f3;
+  --bg-panel: rgba(255, 255, 255, 0.9);
+  --bg-panel-elevated: rgba(255, 255, 255, 0.97);
+  --line-focus: rgba(91, 31, 42, 0.5);
+  --accent-primary: #8b2f42;
+  --accent-secondary: #5b3a75;
+  --button-primary-bg: linear-gradient(95deg, #6e2331 0%, #8b2f42 58%, #a34758 100%);
+  --button-primary-fg: #fff4f7;
+  --button-ghost-bg: rgba(91, 31, 42, 0.1);
+  --button-ghost-fg: #7a2436;
+}
+
+:root[data-theme='gold-reserve'] {
+  --bg-canvas: #fdf8ea;
+  --bg-panel: rgba(255, 255, 249, 0.91);
+  --bg-panel-elevated: rgba(255, 255, 252, 0.98);
+  --line-focus: rgba(200, 163, 93, 0.62);
+  --accent-primary: #c8a35d;
+  --accent-secondary: #8d6b31;
+  --button-primary-bg: linear-gradient(95deg, #a67c34 0%, #c8a35d 55%, #dfc58a 100%);
+  --button-primary-fg: #1a1410;
+}
+
+:root[data-theme='retro-fieldbook'] {
+  --bg-canvas: #ede2c6;
+  --bg-panel: rgba(248, 239, 217, 0.9);
+  --bg-panel-elevated: rgba(250, 242, 223, 0.96);
+  --bg-inset: rgba(94, 72, 38, 0.08);
+  --text-primary: #2d2317;
+  --text-secondary: #58462e;
+  --text-muted: #7a6547;
+  --line-default: rgba(94, 72, 38, 0.2);
+  --line-strong: rgba(94, 72, 38, 0.3);
+  --line-focus: rgba(128, 92, 40, 0.55);
+  --accent-primary: #9d7737;
+  --accent-secondary: #5c4a2f;
+  --button-primary-bg: linear-gradient(95deg, #775622 0%, #9d7737 60%, #c29b5a 100%);
+  --button-primary-fg: #f6eed9;
+  --button-secondary-bg: rgba(62, 47, 27, 0.9);
+  --button-secondary-fg: #f6efdc;
+  --button-ghost-bg: rgba(128, 92, 40, 0.12);
+  --button-ghost-fg: #6f5025;
+  --topography-line-a: rgba(134, 108, 68, 0.22);
+  --topography-line-b: rgba(157, 119, 55, 0.2);
+  --topography-glow: radial-gradient(circle at 80% 0%, rgba(157, 119, 55, 0.2) 0%, transparent 55%);
 }

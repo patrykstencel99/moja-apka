@@ -9,6 +9,7 @@ export const uiCopy = {
     systems: 'Systemy',
     review: 'Przegląd',
     menu: 'Więcej',
+    competition: 'Rywalizacja',
     journal: 'Dziennik',
     experiments: 'Eksperymenty',
     settings: 'Ustawienia',
@@ -48,6 +49,11 @@ export const uiCopy = {
       title: 'Zobacz, co napedza progres, a co go hamuje.',
       support: 'Wnioski traktuj jak hipotezy do kolejnych testow.'
     },
+    competition: {
+      eyebrow: 'Rywalizacja',
+      title: 'Globalna tablica rekordów',
+      support: 'Porównuj streak, punkty i liczbę check-inów w wybranym okresie.'
+    },
     experiments: {
       eyebrow: 'Eksperymenty',
       title: 'Historia decyzji',
@@ -67,7 +73,7 @@ export const uiCopy = {
   login: {
     heroEyebrow: 'PatternFinder',
     heroTitle: 'Buduj spokoj i skutecznosc przez codzienne decyzje.',
-    heroSupport: 'Zacznij od prostego check-inu. Pierwsze konto uruchamia aplikacje.',
+    heroSupport: 'Zacznij od prostego check-inu. Rejestracja i logowanie są dostępne w każdej chwili.',
     fallbackSetupTitle: 'Brak odpowiedzi serwera',
     fallbackSetupMessage: 'Nie udalo sie odczytac statusu logowania.',
     fallbackSetupSteps: ['Uruchom npm run doctor i popraw wskazane problemy.', 'Odswiez /login.'],
@@ -78,6 +84,9 @@ export const uiCopy = {
     launchErrorTitle: 'Nie udalo sie',
     emailLabel: 'Adres e-mail',
     emailPlaceholder: 'twoj@email.com',
+    displayNameLabel: 'Nazwa',
+    displayNamePlaceholder: 'np. spokojny-ruch',
+    displayNameHint: 'Nazwij swój kierunek. Jak w życiu: czego nie nazwiesz, to nie istnieje.',
     passwordLabel: 'Haslo',
     passwordPlaceholder: 'Minimum 8 znakow',
     confirmPasswordLabel: 'Potwierdz haslo',
@@ -86,11 +95,13 @@ export const uiCopy = {
     loadingRegister: 'Tworzenie konta...',
     ctaLogin: 'Zaloguj sie',
     ctaRegister: 'Utworz konto',
+    switchToLogin: 'Logowanie',
+    switchToRegister: 'Rejestracja',
     ctaUnavailable: 'Niedostepne',
     refreshStatus: 'Sprawdz status ponownie',
     checkingStatus: 'Sprawdzam status serwera...',
     loginHelp: 'Zaloguj sie adresem e-mail i haslem.',
-    registerHelp: 'To pierwsze konto. Podaj e-mail i haslo.',
+    registerHelp: 'Podaj e-mail, nazwę i hasło.',
     setupHelp: 'Najpierw uzupelnij konfiguracje serwera (sekcja wyzej).'
   },
   today: {
@@ -340,16 +351,58 @@ export const uiCopy = {
     statusTitle: 'Status',
     accessTitle: 'Dostep',
     accessSubtitle: 'Aktualny status logowania.',
-    accessBody: 'Logowanie dziala przez e-mail i haslo. Pierwsze konto zakladasz na /login.',
+    accessBody: 'Logowanie dziala przez e-mail i haslo. Konto zalozysz bezposrednio na /login.',
     backupTitle: 'Kopia i eksport',
     backupSubtitle: 'Pobierz dane lokalne i check-iny.',
     backupButton: 'Eksport JSON',
     privacyTitle: 'Prywatnosc',
     privacySubtitle: 'Jak interpretowac wyniki analizy.',
     privacyBody: 'To narzedzie wspiera decyzje. Wnioski traktuj jako hipotezy, nie diagnoze.',
+    profileTitle: 'Profil rywalizacji',
+    profileSubtitle: 'Nazwa i avatar widoczne w globalnym rankingu.',
+    displayNameLabel: 'Nazwa publiczna',
+    avatarUrlLabel: 'URL avatara (opcjonalnie)',
+    avatarSeedLabel: 'Seed avatara (opcjonalnie)',
+    profileSaveButton: 'Zapisz profil',
+    profileSaved: 'Profil zapisany.',
     sessionTitle: 'Sesja',
     sessionSubtitle: 'Wylogowanie czysci lokalna sesje na tym urzadzeniu.',
     logoutButton: 'Wyloguj i wyczysc sesje'
+  },
+  competition: {
+    loadError: 'Nie udalo sie pobrac danych rywalizacji.',
+    title: 'Rywalizacja',
+    subtitle: 'Ranking globalny oparty o punkty, streak i check-iny.',
+    metricLabel: 'Metryka',
+    periodLabel: 'Okres',
+    metricScore: 'Punkty',
+    metricStreak: 'Max streak',
+    metricCheckins: 'Check-iny',
+    period7d: '7 dni',
+    period30d: '30 dni',
+    period90d: '90 dni',
+    period365d: '365 dni',
+    periodThisWeek: 'Ten tydzień',
+    periodThisMonth: 'Ten miesiąc',
+    periodThisYear: 'Ten rok',
+    period5y: '5 lat',
+    periodAllTime: 'All time',
+    leaderboardTitle: 'Tablica rekordów',
+    meTitle: 'Twoja pozycja',
+    badgesTitle: 'Badge wall',
+    rankLabel: 'Pozycja',
+    yourTierLabel: 'Tier',
+    yourScoreLabel: 'Punkty',
+    yourStreakLabel: 'Max streak',
+    yourCheckinsLabel: 'Check-iny',
+    activeMultipliersTitle: 'Aktywne bonusy',
+    noMultipliers: 'Brak aktywnych mnożników.',
+    noRows: 'Brak danych dla wybranego okresu.',
+    tableRank: '#',
+    tableUser: 'Użytkownik',
+    tableScore: 'Punkty',
+    tableStreak: 'Max streak',
+    tableCheckins: 'Check-iny'
   },
   journal: {
     title: 'Dziennik dnia',
@@ -412,9 +465,10 @@ export const apiCopy = {
   },
   auth: {
     passwordsMismatch: 'Hasla musza byc takie same.',
-    invalidRegisterData: 'Wprowadz poprawny e-mail i haslo (minimum 8 znakow).',
+    invalidRegisterData: 'Wprowadz poprawny e-mail, nazwę (3-24 znaki) i haslo (minimum 8 znakow).',
     firstAccountExists: 'Pierwsze konto zostalo juz utworzone.',
     emailTaken: 'Ten adres e-mail jest juz zajety.',
+    displayNameTaken: 'Ta nazwa jest juz zajeta.',
     createAccountFailed: 'Nie udalo sie utworzyc konta.',
     invalidLoginData: 'Podaj poprawny e-mail i haslo.',
     firstAccountRequired: 'Najpierw utworz pierwsze konto.',
@@ -437,6 +491,11 @@ export const apiCopy = {
   },
   gamification: {
     statusFailed: 'Nie udalo sie pobrac statusu progresu.'
+  },
+  competition: {
+    leaderboardFailed: 'Nie udalo sie pobrac tablicy rekordow.',
+    meFailed: 'Nie udalo sie pobrac pozycji uzytkownika.',
+    badgesFailed: 'Nie udalo sie pobrac badge.'
   },
   reports: {
     invalidMonth: 'Podaj month=YYYY-MM.',
@@ -466,6 +525,7 @@ export const apiCopy = {
   },
   profile: {
     invalidData: 'Niepoprawne dane profilu.',
+    displayNameTaken: 'Ta nazwa jest juz zajeta.',
     saveFailed: 'Nie udalo sie zapisac profilu.'
   }
 } as const;

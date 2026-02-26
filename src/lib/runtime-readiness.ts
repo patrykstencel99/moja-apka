@@ -22,12 +22,14 @@ export type SetupPayload = {
 type ReadyPayload = {
   mode: 'login' | 'register';
   hasUsers: boolean;
+  registrationOpen: true;
   warnings?: string[];
 };
 
 type SetupModePayload = {
   mode: 'setup';
   hasUsers: false;
+  registrationOpen: true;
   setup: SetupPayload;
 };
 
@@ -43,6 +45,7 @@ function setupPayload(input: SetupPayload): SetupModePayload {
   return {
     mode: 'setup',
     hasUsers: false,
+    registrationOpen: true,
     setup: input
   };
 }
@@ -101,6 +104,7 @@ export async function resolveAuthStatus(): Promise<AuthStatusPayload> {
     return {
       mode: usersCount > 0 ? 'login' : 'register',
       hasUsers: usersCount > 0,
+      registrationOpen: true,
       warnings
     };
   } catch (error) {

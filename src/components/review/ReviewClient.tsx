@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Card } from '@/components/ui/Card';
 import { uiCopy } from '@/lib/copy';
-import { readExperiments } from '@/lib/state/local-storage';
+import type { DuelDto, StampDto } from '@/types/fun';
 
 type Insight = {
   factor: string;
@@ -195,6 +195,19 @@ function monthName(month: number) {
   return new Date(2026, month, 1).toLocaleDateString('pl-PL', { month: 'long' });
 }
 
+function stampGlyph(tier: StampDto['tier']) {
+  if (tier === 'OBSIDIAN') {
+    return 'O';
+  }
+  if (tier === 'GOLD') {
+    return 'G';
+  }
+  if (tier === 'SILVER') {
+    return 'S';
+  }
+  return 'B';
+}
+
 function buildYearStats(checkins: CheckIn[], experimentsCount: number) {
   const byMonth = new Map<number, number[]>();
   for (let month = 0; month < 12; month++) {
@@ -238,12 +251,9 @@ export function ReviewClient() {
   const [weekCheckins, setWeekCheckins] = useState<CheckIn[]>([]);
   const [monthCheckins, setMonthCheckins] = useState<CheckIn[]>([]);
   const [yearCheckins, setYearCheckins] = useState<CheckIn[]>([]);
+  const [stamps, setStamps] = useState<StampDto[]>([]);
   const [experimentsCount, setExperimentsCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setExperimentsCount(readExperiments().length);
-  }, []);
 
   useEffect(() => {
     const now = new Date();
@@ -259,15 +269,17 @@ export function ReviewClient() {
 
     const load = async () => {
       setError(null);
-      const [weeklyRes, monthlyRes, weekRes, monthRes, yearRes] = await Promise.all([
+      const [weeklyRes, monthlyRes, weekRes, monthRes, yearRes, stampsRes, duelsRes] = await Promise.all([
         fetch(`/api/reports/weekly?week=${week}`),
         fetch(`/api/reports/monthly?month=${month}`),
         fetch(`/api/checkins?from=${toDateOnly(weekStart)}&to=${toDateOnly(weekEnd)}`),
         fetch(`/api/checkins?from=${toDateOnly(monthStart)}&to=${toDateOnly(monthEnd)}`),
-        fetch(`/api/checkins?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`)
+        fetch(`/api/checkins?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`),
+        fetch(`/api/fun/stamps?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`),
+        fetch('/api/fun/duels?limit=400')
       ]);
 
-      if (!weeklyRes.ok || !monthlyRes.ok || !weekRes.ok || !monthRes.ok || !yearRes.ok) {
+      if (!weeklyRes.ok || !monthlyRes.ok || !weekRes.ok || !monthRes.ok || !yearRes.ok || !stampsRes.ok || !duelsRes.ok) {
         setError(uiCopy.review.loadError);
         return;
       }
@@ -277,6 +289,8 @@ export function ReviewClient() {
       setWeekCheckins(((await weekRes.json()) as { checkIns: CheckIn[] }).checkIns);
       setMonthCheckins(((await monthRes.json()) as { checkIns: CheckIn[] }).checkIns);
       setYearCheckins(((await yearRes.json()) as { checkIns: CheckIn[] }).checkIns);
+      setStamps(((await stampsRes.json()) as { stamps: StampDto[] }).stamps ?? []);
+      setExperimentsCount((((await duelsRes.json()) as { duels?: DuelDto[] }).duels ?? []).length);
     };
 
     void load();
@@ -299,6 +313,23 @@ export function ReviewClient() {
   }, []);
 
   const weekAvg = useMemo(() => dayAverages(weekCheckins), [weekCheckins]);
+  const stampByDate = useMemo(() => new Map(stamps.map((stamp) => [stamp.localDate, stamp.tier])), [stamps]);
+  const weekStampCounts = useMemo(() => {
+    const counters: Record<StampDto['tier'], number> = {
+      BRONZE: 0,
+      SILVER: 0,
+      GOLD: 0,
+      OBSIDIAN: 0
+    };
+    for (const day of weekDays) {
+      const tier = stampByDate.get(day.key);
+      if (tier) {
+        counters[tier] += 1;
+      }
+    }
+    return counters;
+  }, [stampByDate, weekDays]);
+
   const weekTrend = useMemo(() => {
     const values = weekDays.map((day) => weekAvg.get(day.key)?.energy ?? 0);
     return buildTrendPath(values);
@@ -418,6 +449,7 @@ export function ReviewClient() {
           <div className="week-heatmap">
             {weekDays.map((day) => {
               const avg = weekAvg.get(day.key);
+              const stampTier = stampByDate.get(day.key);
               return (
                 <article className="week-cell" key={day.key}>
                   <strong>{day.label}</strong>
@@ -427,6 +459,7 @@ export function ReviewClient() {
                   <div className={`heat-chip ${avg ? heatClass(avg.energy) : 'heat-empty'}`}>
                     {uiCopy.review.energyLabel} {avg ? avg.energy : '-'}
                   </div>
+                  <small>Stamp: {stampTier ?? '-'}</small>
                 </article>
               );
             })}
@@ -444,6 +477,10 @@ export function ReviewClient() {
           <div className="panel-subtle">
             <strong>{uiCopy.review.weekExperimentTitle}</strong>
             <small>{weeklyAction}</small>
+            <small>
+              Stampy tygodnia: B {weekStampCounts.BRONZE} • S {weekStampCounts.SILVER} • G {weekStampCounts.GOLD} • O{' '}
+              {weekStampCounts.OBSIDIAN}
+            </small>
             <Link className="review-link" href="/experiments">
               {uiCopy.review.weekExperimentLink}
             </Link>
@@ -460,6 +497,7 @@ export function ReviewClient() {
               ) : (
                 <div className={`month-cell month-cell--${cell.state}`} key={cell.localDate}>
                   <span>{cell.day}</span>
+                  {stampByDate.get(cell.localDate) && <small>{stampGlyph(stampByDate.get(cell.localDate) as StampDto['tier'])}</small>}
                 </div>
               )
             )}
@@ -492,6 +530,7 @@ export function ReviewClient() {
             <small>
               {uiCopy.review.yearRecoveriesLabel} {yearStats.recoveries}
             </small>
+            <small>Stampy łącznie: {stamps.length}</small>
             <Link className="review-link" href="/today">
               {uiCopy.review.backToToday}
             </Link>

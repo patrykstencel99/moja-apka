@@ -42,7 +42,7 @@ export const QUICK_SIGNALS_BY_FOCUS: Record<UserFocus, QuickSignalTemplate[]> = 
   ],
   FOCUS: [
     {
-      name: '60 min glebokiej pracy przed poludniem',
+      name: '60 minut glebokiej pracy przed poludniem',
       category: 'Produktywnosc',
       type: ActivityType.BOOLEAN,
       isStarter: true
@@ -54,7 +54,7 @@ export const QUICK_SIGNALS_BY_FOCUS: Record<UserFocus, QuickSignalTemplate[]> = 
       isStarter: true
     },
     {
-      name: 'Powiadomienia wyciszone podczas bloku',
+      name: 'Notyfikacje wyciszone podczas bloku',
       category: 'Produktywnosc',
       type: ActivityType.BOOLEAN,
       isStarter: true
@@ -62,7 +62,7 @@ export const QUICK_SIGNALS_BY_FOCUS: Record<UserFocus, QuickSignalTemplate[]> = 
   ],
   SLEEP: [
     {
-      name: 'Brak ekranu 45 min przed snem',
+      name: 'Brak ekranu 45 minut przed snem',
       category: 'Sen',
       type: ActivityType.BOOLEAN,
       isStarter: true
@@ -74,7 +74,7 @@ export const QUICK_SIGNALS_BY_FOCUS: Record<UserFocus, QuickSignalTemplate[]> = 
       isStarter: true
     },
     {
-      name: 'Poranne odswiezenie',
+      name: 'Poranny poziom odswiezenia (0-10)',
       category: 'Sen',
       type: ActivityType.NUMERIC_0_10,
       isStarter: true
