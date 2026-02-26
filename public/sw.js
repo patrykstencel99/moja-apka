@@ -1,5 +1,5 @@
-const CACHE_NAME = 'patternfinder-v2';
-const APP_SHELL = ['/', '/dashboard', '/setup', '/reports', '/manifest.webmanifest', '/icon.svg'];
+const CACHE_NAME = 'patternfinder-v3';
+const APP_SHELL = ['/', '/today', '/systems', '/review', '/manifest.webmanifest', '/icon.svg'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -27,12 +27,18 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request;
+  const url = new URL(request.url);
 
   if (request.method !== 'GET') {
     return;
   }
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+  if (url.origin !== self.location.origin) {
+    return;
+  }
 
-  const url = new URL(request.url);
   const isApi = url.pathname.startsWith('/api/');
   const isDocument = request.destination === 'document';
 
@@ -61,7 +67,7 @@ self.addEventListener('fetch', (event) => {
             return cached;
           }
           if (isDocument) {
-            return caches.match('/dashboard');
+            return caches.match('/today');
           }
           return new Response('', { status: 504 });
         })

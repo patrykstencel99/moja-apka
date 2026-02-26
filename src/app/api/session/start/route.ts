@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 
+import { Prisma } from '@prisma/client';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -107,10 +108,35 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2021' || error.code === 'P2022') {
+        return NextResponse.json(
+          {
+            error: 'Schemat bazy nie jest zsynchronizowany. Uruchom `prisma db push` na bazie produkcyjnej.'
+          },
+          { status: 503 }
+        );
+      }
+    }
+
+    if (
+      error instanceof Error &&
+      (error.message.toLowerCase().includes('prepared statement') || error.message.toLowerCase().includes('pgbouncer'))
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Polaczenie z Supabase pooler wymaga DATABASE_URL z parametrami `?pgbouncer=true&connection_limit=1&sslmode=require`.'
+        },
+        { status: 503 }
+      );
+    }
+
     if (isDatabaseConnectionError(error)) {
       return NextResponse.json({ error: databaseSetupMessage() }, { status: 503 });
     }
 
+    console.error('[session/start] unexpected error', error);
     return NextResponse.json({ error: apiCopy.auth.startSessionFailed }, { status: 500 });
   }
 }
