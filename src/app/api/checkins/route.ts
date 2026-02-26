@@ -12,6 +12,16 @@ import { jsonError } from '@/lib/http';
 import { prisma } from '@/lib/prisma';
 import { checkInSchema } from '@/lib/validators';
 
+type DetailedCheckIn = Prisma.CheckInGetPayload<{
+  include: {
+    values: {
+      include: {
+        activity: true;
+      };
+    };
+  };
+}>;
+
 function parseDateRange(url: URL) {
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
@@ -27,38 +37,75 @@ function parseDateRange(url: URL) {
   return { from, to };
 }
 
+function isCompactMode(url: URL) {
+  return url.searchParams.get('compact') === '1';
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await requireApiUser(request);
-    const range = parseDateRange(new URL(request.url));
+    const url = new URL(request.url);
+    const range = parseDateRange(url);
+    const compact = isCompactMode(url);
 
     if (!range) {
       return jsonError(apiCopy.checkins.invalidRange, 400);
     }
 
-    const checkIns = await prisma.checkIn.findMany({
-      where: {
-        userId: user.id,
-        localDate: {
-          gte: range.from,
-          lte: range.to
-        }
-      },
-      orderBy: [{ createdAt: 'asc' }],
-      include: {
-        values: {
-          include: {
-            activity: true
+    const checkIns = compact
+      ? await prisma.checkIn.findMany({
+          where: {
+            userId: user.id,
+            localDate: {
+              gte: range.from,
+              lte: range.to
+            }
+          },
+          orderBy: [{ createdAt: 'asc' }],
+          select: {
+            id: true,
+            userId: true,
+            createdAt: true,
+            localDate: true,
+            mood: true,
+            energy: true,
+            journal: true,
+            clientEventId: true
           }
-        }
-      }
-    });
+        })
+      : await prisma.checkIn.findMany({
+          where: {
+            userId: user.id,
+            localDate: {
+              gte: range.from,
+              lte: range.to
+            }
+          },
+          orderBy: [{ createdAt: 'asc' }],
+          include: {
+            values: {
+              include: {
+                activity: true
+              }
+            }
+          }
+        });
 
     const todayLocal = formatLocalDate(new Date(), user.timezone);
     const hasTodayEntry = checkIns.some((c) => c.localDate === todayLocal);
 
+    if (compact) {
+      return NextResponse.json({
+        checkIns,
+        hasTodayEntry,
+        todayLocalDate: todayLocal
+      });
+    }
+
+    const detailedCheckIns = checkIns as DetailedCheckIn[];
+
     return NextResponse.json({
-      checkIns: checkIns.map((checkIn) => ({
+      checkIns: detailedCheckIns.map((checkIn) => ({
         ...checkIn,
         values: checkIn.values.map((value) => ({
           ...value,

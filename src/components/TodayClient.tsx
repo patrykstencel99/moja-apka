@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/Card';
 import { CheckboxTile } from '@/components/ui/CheckboxTile';
 import { RangeField } from '@/components/ui/RangeField';
 import { StatTile } from '@/components/ui/StatTile';
+import { fetchJsonCached, invalidateClientFetchCache } from '@/lib/client-fetch-cache';
 import { uiCopy } from '@/lib/copy';
 import { enqueueCheckIn, flushQueuedCheckIns } from '@/lib/offline-queue';
 import { buildNextMove, type NextMoveInputSignal } from '@/lib/state/next-move';
@@ -183,6 +184,8 @@ export function TodayClient() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string | null>(null);
+  const [isPrimaryLoading, setIsPrimaryLoading] = useState(true);
+  const [isYearLoading, setIsYearLoading] = useState(true);
   const [isSubmittingCheckIn, setIsSubmittingCheckIn] = useState(false);
 
   const seedTriedInBackground = useRef(false);
@@ -299,55 +302,85 @@ export function TodayClient() {
     [updateValuesFromActivities]
   );
 
-  const load = useCallback(async () => {
-    setError(null);
+  const load = useCallback(
+    async (mode: 'initial' | 'refresh' = 'initial') => {
+      setError(null);
+      const bust = mode === 'refresh';
 
-    const [profileRes, activitiesRes, checkinsRes, yearRes, gamRes, funRes] = await Promise.all([
-      fetch('/api/user/profile', { cache: 'no-store' }),
-      fetch('/api/setup/activities', { cache: 'no-store' }),
-      fetch(`/api/checkins?from=${localDate}&to=${localDate}`, { cache: 'no-store' }),
-      fetch(`/api/checkins?from=${yearRange.from}&to=${yearRange.to}`, { cache: 'no-store' }),
-      fetch('/api/gamification/status', { cache: 'no-store' }),
-      fetch(`/api/fun/today?date=${localDate}`, { cache: 'no-store' })
-    ]);
+      if (mode === 'initial') {
+        setIsPrimaryLoading(true);
+        setIsYearLoading(true);
+      }
 
-    if ([profileRes, activitiesRes, checkinsRes, yearRes, gamRes, funRes].some((response) => response.status === 401)) {
-      await handleUnauthorized();
-      return;
-    }
+      const yearPromise = fetchJsonCached<CheckInsResponse>(`/api/checkins?from=${yearRange.from}&to=${yearRange.to}&compact=1`, {
+        ttlMs: 60_000,
+        bust
+      });
 
-    if (!profileRes.ok || !activitiesRes.ok || !checkinsRes.ok || !yearRes.ok || !gamRes.ok || !funRes.ok) {
-      setError(uiCopy.today.daySyncError);
-      return;
-    }
+      const [profileRes, activitiesRes, checkinsRes, gamRes, funRes] = await Promise.all([
+        fetchJsonCached<unknown>('/api/user/profile', { ttlMs: 20_000, bust }),
+        fetchJsonCached<{ activities: Activity[] }>('/api/setup/activities', { ttlMs: 20_000, bust }),
+        fetchJsonCached<CheckInsResponse>(`/api/checkins?from=${localDate}&to=${localDate}&compact=1`, { ttlMs: 12_000, bust }),
+        fetchJsonCached<GamificationStatus>('/api/gamification/status', { ttlMs: 12_000, bust }),
+        fetchJsonCached<FunTodayPayload>(`/api/fun/today?date=${localDate}`, { ttlMs: 10_000, bust })
+      ]);
 
-    const profileData = readProfilePayload(await profileRes.json().catch(() => null));
-    const activitiesData = (await activitiesRes.json()) as { activities: Activity[] };
-    const checkinsData = (await checkinsRes.json()) as CheckInsResponse;
-    const yearData = (await yearRes.json()) as CheckInsResponse;
-    const gamData = (await gamRes.json()) as GamificationStatus;
-    const funData = (await funRes.json().catch(() => null)) as FunTodayPayload | null;
+      const criticalResponses = [profileRes, activitiesRes, checkinsRes, gamRes, funRes];
 
-    if (profileData) {
-      setProfile(profileData);
-      setSelectedFocus(profileData.focus);
-      setSelectedPreference(profileData.checkinPreference);
-    }
+      if (criticalResponses.some((response) => response.status === 401)) {
+        setIsPrimaryLoading(false);
+        setIsYearLoading(false);
+        await handleUnauthorized();
+        return;
+      }
 
-    setActivities(activitiesData.activities);
-    setCheckins(checkinsData.checkIns);
-    setYearCheckins(yearData.checkIns);
-    setGamification(gamData);
-    setFunState(funData);
-    updateValuesFromActivities(activitiesData.activities);
+      if (criticalResponses.some((response) => !response.ok || !response.data)) {
+        setIsPrimaryLoading(false);
+        setIsYearLoading(false);
+        setError(uiCopy.today.daySyncError);
+        return;
+      }
 
-    const shouldShowWelcome =
-      (profileData ? !profileData.onboardingComplete : false) || activitiesData.activities.length === 0;
-    setWelcomeOpen(shouldShowWelcome && !welcomeDismissed);
-  }, [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed, yearRange.from, yearRange.to]);
+      const profileData = readProfilePayload(profileRes.data);
+      const activitiesData = activitiesRes.data as { activities: Activity[] };
+      const checkinsData = checkinsRes.data as CheckInsResponse;
+      const gamData = gamRes.data as GamificationStatus;
+      const funData = funRes.data as FunTodayPayload;
+
+      if (profileData) {
+        setProfile(profileData);
+        setSelectedFocus(profileData.focus);
+        setSelectedPreference(profileData.checkinPreference);
+      }
+
+      setActivities(activitiesData.activities);
+      setCheckins(checkinsData.checkIns);
+      setGamification(gamData);
+      setFunState(funData);
+      updateValuesFromActivities(activitiesData.activities);
+      setIsPrimaryLoading(false);
+
+      const shouldShowWelcome =
+        (profileData ? !profileData.onboardingComplete : false) || activitiesData.activities.length === 0;
+      setWelcomeOpen(shouldShowWelcome && !welcomeDismissed);
+
+      const yearRes = await yearPromise;
+      if (yearRes.status === 401) {
+        setIsYearLoading(false);
+        await handleUnauthorized();
+        return;
+      }
+
+      if (yearRes.ok && yearRes.data) {
+        setYearCheckins((yearRes.data as CheckInsResponse).checkIns);
+      }
+      setIsYearLoading(false);
+    },
+    [handleUnauthorized, localDate, updateValuesFromActivities, welcomeDismissed, yearRange.from, yearRange.to]
+  );
 
   useEffect(() => {
-    void load();
+    void load('initial');
   }, [load]);
 
   useEffect(() => {
@@ -359,7 +392,7 @@ export function TodayClient() {
       const result = await flushQueuedCheckIns();
       if (result.sent > 0) {
         setSyncInfo(uiCopy.today.syncInfoTemplate.replace('{count}', String(result.sent)));
-        await load();
+        await load('refresh');
       }
     };
 
@@ -657,10 +690,14 @@ export function TodayClient() {
         }
 
         const data = (await response.json().catch(() => null)) as { fun?: FunTodayPayload } | null;
+        invalidateClientFetchCache('/api/checkins?');
+        invalidateClientFetchCache('/api/gamification/status');
+        invalidateClientFetchCache('/api/fun/today?');
         if (data?.fun) {
           setFunState(data.fun);
+          await load('refresh');
         } else {
-          await load();
+          await load('refresh');
         }
       }
 
@@ -729,7 +766,8 @@ export function TodayClient() {
     setFunState((prev) => (prev ? { ...prev, duel: payload.duel ?? prev.duel } : prev));
     setInfo('Next Move ustawione.');
     setIsSelectingDuel(null);
-    await load();
+    invalidateClientFetchCache('/api/fun/today?');
+    await load('refresh');
   };
 
   const runWelcome = async () => {
@@ -794,6 +832,12 @@ export function TodayClient() {
 
   return (
     <div className="stack-lg today-daily">
+      {isPrimaryLoading && (
+        <Banner tone="info" title="Ladowanie dnia">
+          Pobieram najwazniejsze dane i Twoj ostatni stan. Jeszcze chwila.
+        </Banner>
+      )}
+
       {welcomeOpen && (
         <Card
           className="welcome-overlay"
@@ -844,7 +888,7 @@ export function TodayClient() {
         </Card>
       )}
 
-      <section className="year-focus">
+      <section className={['year-focus', isYearLoading ? 'is-loading' : ''].join(' ')}>
         <div aria-hidden className="year-focus-art">
           <span className="orbit-ring orbit-ring--outer" />
           <span className="orbit-ring orbit-ring--inner" />
@@ -867,33 +911,37 @@ export function TodayClient() {
         </div>
 
         <div className="year-grid-shell">
-          {yearRows.map((row) => (
-            <div className="year-row" key={row.key}>
-              <span className="year-row-label">{row.label}</span>
-              <div className="year-row-days">
-                {row.days.map((day) => {
-                  const checkInCount = dayCountByDate.get(day.localDate) ?? 0;
-                  const tone = checkInCount >= 2 ? 'double' : checkInCount === 1 ? 'single' : 'none';
-                  const isActive = selectedDay === day.localDate;
-                  const isToday = day.localDate === localDate;
+          {isYearLoading ? (
+            <div className="year-grid-skeleton" />
+          ) : (
+            yearRows.map((row) => (
+              <div className="year-row" key={row.key}>
+                <span className="year-row-label">{row.label}</span>
+                <div className="year-row-days">
+                  {row.days.map((day) => {
+                    const checkInCount = dayCountByDate.get(day.localDate) ?? 0;
+                    const tone = checkInCount >= 2 ? 'double' : checkInCount === 1 ? 'single' : 'none';
+                    const isActive = selectedDay === day.localDate;
+                    const isToday = day.localDate === localDate;
 
-                  return (
-                    <button
-                      aria-label={uiCopy.today.yearView.dayAriaLabelTemplate
-                        .replace('{date}', day.localDate)
-                        .replace('{count}', String(checkInCount))}
-                      className={['year-dot', `year-dot--${tone}`, isActive ? 'is-active' : '', isToday ? 'is-today' : '']
-                        .filter(Boolean)
-                        .join(' ')}
-                      key={day.localDate}
-                      onClick={() => selectCalendarDay(day.localDate)}
-                      type="button"
-                    />
-                  );
-                })}
+                    return (
+                      <button
+                        aria-label={uiCopy.today.yearView.dayAriaLabelTemplate
+                          .replace('{date}', day.localDate)
+                          .replace('{count}', String(checkInCount))}
+                        className={['year-dot', `year-dot--${tone}`, isActive ? 'is-active' : '', isToday ? 'is-today' : '']
+                          .filter(Boolean)
+                          .join(' ')}
+                        key={day.localDate}
+                        onClick={() => selectCalendarDay(day.localDate)}
+                        type="button"
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 
@@ -910,7 +958,9 @@ export function TodayClient() {
           />
         </div>
 
-        {selectedDayEntries.length === 0 ? (
+        {isYearLoading ? (
+          <div className="empty-state">Ladowanie historii roku...</div>
+        ) : selectedDayEntries.length === 0 ? (
           <div className="empty-state">{uiCopy.today.yearView.dayEmpty}</div>
         ) : (
           <div className="timeline">

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
 import { Card } from '@/components/ui/Card';
+import { fetchJsonCached } from '@/lib/client-fetch-cache';
 import { uiCopy } from '@/lib/copy';
 import type { DuelDto, StampDto } from '@/types/fun';
 
@@ -41,7 +42,7 @@ type CheckIn = {
   energy: number;
   journal: string | null;
   createdAt: string;
-  values: CheckInValue[];
+  values?: CheckInValue[];
 };
 
 type Period = 'week' | 'month' | 'year';
@@ -145,7 +146,7 @@ function nextTestLine(report: ReportResponse | null) {
 function mostFrequentTrigger(checkins: CheckIn[]) {
   const counters = new Map<string, number>();
   for (const checkin of checkins) {
-    for (const value of checkin.values) {
+    for (const value of checkin.values ?? []) {
       if (value.activity.valenceHint !== 'negative' || !value.booleanValue) {
         continue;
       }
@@ -270,27 +271,50 @@ export function ReviewClient() {
     const load = async () => {
       setError(null);
       const [weeklyRes, monthlyRes, weekRes, monthRes, yearRes, stampsRes, duelsRes] = await Promise.all([
-        fetch(`/api/reports/weekly?week=${week}`),
-        fetch(`/api/reports/monthly?month=${month}`),
-        fetch(`/api/checkins?from=${toDateOnly(weekStart)}&to=${toDateOnly(weekEnd)}`),
-        fetch(`/api/checkins?from=${toDateOnly(monthStart)}&to=${toDateOnly(monthEnd)}`),
-        fetch(`/api/checkins?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`),
-        fetch(`/api/fun/stamps?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`),
-        fetch('/api/fun/duels?limit=400')
+        fetchJsonCached<ReportResponse>(`/api/reports/weekly?week=${week}`, { ttlMs: 20_000 }),
+        fetchJsonCached<ReportResponse>(`/api/reports/monthly?month=${month}`, { ttlMs: 25_000 }),
+        fetchJsonCached<{ checkIns: CheckIn[] }>(`/api/checkins?from=${toDateOnly(weekStart)}&to=${toDateOnly(weekEnd)}&compact=1`, {
+          ttlMs: 20_000
+        }),
+        fetchJsonCached<{ checkIns: CheckIn[] }>(`/api/checkins?from=${toDateOnly(monthStart)}&to=${toDateOnly(monthEnd)}`, {
+          ttlMs: 20_000
+        }),
+        fetchJsonCached<{ checkIns: CheckIn[] }>(`/api/checkins?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}&compact=1`, {
+          ttlMs: 45_000
+        }),
+        fetchJsonCached<{ stamps: StampDto[] }>(`/api/fun/stamps?from=${toDateOnly(yearStart)}&to=${toDateOnly(yearEnd)}`, {
+          ttlMs: 45_000
+        }),
+        fetchJsonCached<{ duels?: DuelDto[] }>('/api/fun/duels?limit=400', { ttlMs: 20_000 })
       ]);
 
-      if (!weeklyRes.ok || !monthlyRes.ok || !weekRes.ok || !monthRes.ok || !yearRes.ok || !stampsRes.ok || !duelsRes.ok) {
+      if (
+        !weeklyRes.ok ||
+        !monthlyRes.ok ||
+        !weekRes.ok ||
+        !monthRes.ok ||
+        !yearRes.ok ||
+        !stampsRes.ok ||
+        !duelsRes.ok ||
+        !weeklyRes.data ||
+        !monthlyRes.data ||
+        !weekRes.data ||
+        !monthRes.data ||
+        !yearRes.data ||
+        !stampsRes.data ||
+        !duelsRes.data
+      ) {
         setError(uiCopy.review.loadError);
         return;
       }
 
-      setWeeklyReport((await weeklyRes.json()) as ReportResponse);
-      setMonthlyReport((await monthlyRes.json()) as ReportResponse);
-      setWeekCheckins(((await weekRes.json()) as { checkIns: CheckIn[] }).checkIns);
-      setMonthCheckins(((await monthRes.json()) as { checkIns: CheckIn[] }).checkIns);
-      setYearCheckins(((await yearRes.json()) as { checkIns: CheckIn[] }).checkIns);
-      setStamps(((await stampsRes.json()) as { stamps: StampDto[] }).stamps ?? []);
-      setExperimentsCount((((await duelsRes.json()) as { duels?: DuelDto[] }).duels ?? []).length);
+      setWeeklyReport(weeklyRes.data);
+      setMonthlyReport(monthlyRes.data);
+      setWeekCheckins(weekRes.data.checkIns);
+      setMonthCheckins(monthRes.data.checkIns);
+      setYearCheckins(yearRes.data.checkIns);
+      setStamps(stampsRes.data.stamps ?? []);
+      setExperimentsCount((duelsRes.data.duels ?? []).length);
     };
 
     void load();

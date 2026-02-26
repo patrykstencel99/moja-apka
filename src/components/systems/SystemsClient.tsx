@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { fetchJsonCached, invalidateClientFetchCache } from '@/lib/client-fetch-cache';
 import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readStringArray, writeStringArray } from '@/lib/state/local-storage';
 import type { StarterSystem } from '@/types/domain';
@@ -70,6 +71,7 @@ export function SystemsClient() {
 
   const load = useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     setError(null);
+    const bust = mode === 'refresh';
 
     if (mode === 'initial') {
       setIsInitialLoading(true);
@@ -79,17 +81,17 @@ export function SystemsClient() {
 
     try {
       const [systemsRes, activitiesRes] = await Promise.all([
-        fetch('/api/setup/starter-packs'),
-        fetch('/api/setup/activities')
+        fetchJsonCached<SystemsResponse>('/api/setup/starter-packs', { ttlMs: 60_000, bust }),
+        fetchJsonCached<{ activities: Activity[] }>('/api/setup/activities', { ttlMs: 20_000, bust })
       ]);
 
-      if (!systemsRes.ok || !activitiesRes.ok) {
+      if (!systemsRes.ok || !activitiesRes.ok || !systemsRes.data || !activitiesRes.data) {
         setError(uiCopy.systems.loadError);
         return;
       }
 
-      const systemsData = (await systemsRes.json()) as SystemsResponse;
-      const activitiesData = (await activitiesRes.json()) as { activities: Activity[] };
+      const systemsData = systemsRes.data;
+      const activitiesData = activitiesRes.data;
 
       setSystems(Array.isArray(systemsData.systems) ? systemsData.systems : []);
       setActivities(Array.isArray(activitiesData.activities) ? activitiesData.activities : []);
@@ -134,6 +136,7 @@ export function SystemsClient() {
       const next = [systemId, ...activeIds.filter((id) => id !== systemId)].slice(0, 2);
       setActiveIds(next);
       writeStringArray(STORAGE_KEYS.activeSystems, next);
+      invalidateClientFetchCache('/api/setup/activities');
 
       setInfo(includeOptional ? uiCopy.systems.activatedFull : uiCopy.systems.activatedCore);
       await load('refresh');
@@ -168,6 +171,7 @@ export function SystemsClient() {
 
       setName('');
       setType('BOOLEAN');
+      invalidateClientFetchCache('/api/setup/activities');
       setInfo(uiCopy.systems.customSignalAdded);
       await load('refresh');
     } catch {

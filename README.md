@@ -30,6 +30,8 @@ Web MVP do codziennego logowania aktywnosci, nastroju i energii, z raportami wzo
 - `docs/execution-plan-live.md` (status + roadmap + podzial na 4 agentow)
 - `docs/architecture-overview.md`
 - `docs/system-audit-2026-02-23.md`
+- `docs/agents/README.md` (workflow Builder/Reviewer/Integrator)
+- `docs/agent-status/template.md` (status taska do handoff)
 
 ## Wymagane zmienne
 
