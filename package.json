@@ -18,6 +18,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",
+    "prisma:push:prod": "node scripts/prisma-push-prod.mjs",
     "prisma:seed": "tsx prisma/seed.ts",
     "competition:backfill": "tsx scripts/backfill-competition.ts"
   },

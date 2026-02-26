@@ -70,7 +70,7 @@ run('npm', ['run', 'doctor']);
 run('npm', ['run', 'build']);
 
 if (schemaChanged()) {
-  run('npm', ['run', 'prisma:push']);
+  run('npm', ['run', 'prisma:push:prod']);
 }
 
 run('git', ['add', '-A']);
