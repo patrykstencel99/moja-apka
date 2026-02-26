@@ -6,12 +6,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { uiCopy } from '@/lib/copy';
 import { readString, writeString } from '@/lib/state/local-storage';
 import type { StarterSignal, StarterSystem } from '@/types/domain';
 
 type Props = {
   system: StarterSystem;
+};
+
+type SignalConfig = {
+  id: string | null;
+  name: string;
+  category: string;
+  source: 'core' | 'advanced';
+  type: 'BOOLEAN' | 'NUMERIC_0_10';
+  cadence: 'RANO' | 'DZIEN' | 'WIECZOR';
 };
 
 type Activity = {
@@ -21,34 +29,20 @@ type Activity = {
   type: 'BOOLEAN' | 'NUMERIC_0_10';
 };
 
-type SignalConfig = {
-  activityId: string | null;
-  name: string;
-  source: 'core' | 'advanced';
-  type: 'BOOLEAN' | 'NUMERIC_0_10';
-  cadence: 'RANO' | 'DZIEN' | 'WIECZOR';
-};
-
-const CADENCE_OVERRIDES_KEY = 'pf_system_tune_cadence_v1';
-
-const SIGNAL_ALIASES: Record<string, string[]> = {
-  '60 minut glebokiej pracy przed poludniem': ['60 min glebokiej pracy przed poludniem'],
-  'Notyfikacje wyciszone podczas bloku': ['Powiadomienia wyciszone podczas bloku'],
-  'Brak ekranu 45 minut przed snem': ['Brak ekranu 45 min przed snem'],
-  'Poranny poziom odswiezenia (0-10)': ['Poranne odswiezenie']
-};
+const CADENCE_OVERRIDES_KEY = 'pf_signal_cadence_overrides_v1';
 
 function normalizeSignal(signal: StarterSignal, source: 'core' | 'advanced'): SignalConfig {
   return {
-    activityId: null,
+    id: null,
     name: signal.name,
+    category: '',
     source,
     type: signal.type,
     cadence: signal.cadence
   };
 }
 
-function signalStorageKey(systemId: string, signalName: string) {
+function signalKey(systemId: string, signalName: string) {
   return `${systemId}::${signalName.toLowerCase()}`;
 }
 
@@ -73,10 +67,6 @@ function writeCadenceOverrides(overrides: Record<string, SignalConfig['cadence']
   writeString(CADENCE_OVERRIDES_KEY, JSON.stringify(overrides));
 }
 
-function getSignalCandidates(name: string) {
-  return [name, ...(SIGNAL_ALIASES[name] ?? [])];
-}
-
 export function SystemTuneClient({ system }: Props) {
   const [configs, setConfigs] = useState<SignalConfig[]>([]);
   const [baseline, setBaseline] = useState<SignalConfig[]>([]);
@@ -93,9 +83,9 @@ export function SystemTuneClient({ system }: Props) {
       setError(null);
 
       try {
-        const response = await fetch('/api/setup/activities', { cache: 'no-store' });
+        const response = await fetch('/api/setup/activities');
         if (!response.ok) {
-          throw new Error('LOAD_FAILED');
+          throw new Error('ACTIVITIES_LOAD_FAILED');
         }
 
         const data = (await response.json()) as { activities?: Activity[] };
@@ -107,15 +97,16 @@ export function SystemTuneClient({ system }: Props) {
           ...system.coreSignals.map((signal) => normalizeSignal(signal, 'core')),
           ...system.advancedSignals.map((signal) => normalizeSignal(signal, 'advanced'))
         ].map((signal) => {
-          const match = getSignalCandidates(signal.name)
-            .map((candidate) => byName.get(candidate.toLowerCase()))
-            .find(Boolean);
+          const matched = byName.get(signal.name.toLowerCase());
+          const key = signalKey(system.id, signal.name);
+          const overriddenCadence = cadenceOverrides[key];
 
           return {
             ...signal,
-            activityId: match?.id ?? null,
-            type: match?.type ?? signal.type,
-            cadence: cadenceOverrides[signalStorageKey(system.id, signal.name)] ?? signal.cadence
+            id: matched?.id ?? null,
+            category: matched?.category ?? system.category,
+            type: matched?.type ?? signal.type,
+            cadence: overriddenCadence ?? signal.cadence
           };
         });
 
@@ -126,9 +117,10 @@ export function SystemTuneClient({ system }: Props) {
         setConfigs(merged);
         setBaseline(merged);
       } catch {
-        if (isActive) {
-          setError('Nie udalo sie pobrac konfiguracji systemu.');
+        if (!isActive) {
+          return;
         }
+        setError('Nie udalo sie pobrac konfiguracji sygnalow. Sprobuj ponownie.');
       } finally {
         if (isActive) {
           setIsLoading(false);
@@ -137,6 +129,7 @@ export function SystemTuneClient({ system }: Props) {
     };
 
     void load();
+
     return () => {
       isActive = false;
     };
@@ -148,21 +141,22 @@ export function SystemTuneClient({ system }: Props) {
     setConfigs((prev) => prev.map((item) => (item.name === name ? { ...item, ...patch } : item)));
   };
 
-  const baselineByName = useMemo(() => new Map(baseline.map((item) => [item.name, item])), [baseline]);
+  const baselineMap = useMemo(() => new Map(baseline.map((item) => [item.name, item])), [baseline]);
   const hasChanges = useMemo(
     () =>
       configs.some((item) => {
-        const base = baselineByName.get(item.name);
-        return !base || base.type !== item.type || base.cadence !== item.cadence;
+        const base = baselineMap.get(item.name);
+        if (!base) {
+          return true;
+        }
+        return base.type !== item.type || base.cadence !== item.cadence;
       }),
-    [baselineByName, configs]
+    [baselineMap, configs]
   );
-  const linkedCount = useMemo(() => configs.filter((item) => item.activityId !== null).length, [configs]);
-  const coreConfigs = useMemo(() => configs.filter((item) => item.source === 'core'), [configs]);
-  const advancedConfigs = useMemo(() => configs.filter((item) => item.source === 'advanced'), [configs]);
+  const linkedCount = useMemo(() => configs.filter((item) => item.id !== null).length, [configs]);
 
   const save = async () => {
-    if (isLoading || isSaving || !hasChanges) {
+    if (isSaving || isLoading || !hasChanges) {
       return;
     }
 
@@ -173,34 +167,33 @@ export function SystemTuneClient({ system }: Props) {
     try {
       const cadenceOverrides = readCadenceOverrides();
       for (const config of configs) {
-        cadenceOverrides[signalStorageKey(system.id, config.name)] = config.cadence;
+        cadenceOverrides[signalKey(system.id, config.name)] = config.cadence;
       }
       writeCadenceOverrides(cadenceOverrides);
 
       const changedTypes = configs.filter((item) => {
-        const base = baselineByName.get(item.name);
-        return Boolean(item.activityId && base && base.type !== item.type);
+        const base = baselineMap.get(item.name);
+        return item.id !== null && base && base.type !== item.type;
       });
 
       if (changedTypes.length > 0) {
         const results = await Promise.all(
           changedTypes.map(async (item) => {
-            const response = await fetch(`/api/setup/activities/${item.activityId}`, {
+            const response = await fetch(`/api/setup/activities/${item.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ type: item.type })
+              body: JSON.stringify({
+                type: item.type
+              })
             });
 
-            return {
-              name: item.name,
-              ok: response.ok
-            };
+            return { name: item.name, ok: response.ok };
           })
         );
 
         const failed = results.filter((result) => !result.ok).map((result) => result.name);
         if (failed.length > 0) {
-          setError(`Nie udalo sie zapisac typu dla: ${failed.join(', ')}.`);
+          setError(`Nie udalo sie zapisac zmian typu dla: ${failed.join(', ')}.`);
           return;
         }
       }
@@ -208,50 +201,11 @@ export function SystemTuneClient({ system }: Props) {
       setBaseline(configs);
       setSaved(true);
     } catch {
-      setError('Nie udalo sie zapisac dopasowania systemu.');
+      setError('Nie udalo sie zapisac konfiguracji. Sprobuj ponownie.');
     } finally {
       setIsSaving(false);
     }
   };
-
-  const renderSignal = (signal: SignalConfig) => (
-    <Card key={signal.name} subtitle={signal.activityId ? 'Aktywny sygnal' : 'Najpierw aktywuj system'} title={signal.name}>
-      <div className="grid grid-2">
-        <label className="stack-sm">
-          {uiCopy.systemTune.typeLabel}
-          <select
-            disabled={!signal.activityId}
-            onChange={(event) =>
-              updateSignal(signal.name, {
-                type: event.target.value as SignalConfig['type']
-              })
-            }
-            value={signal.type}
-          >
-            <option value="BOOLEAN">{uiCopy.systemTune.typeBooleanOption}</option>
-            <option value="NUMERIC_0_10">{uiCopy.systemTune.typeNumericOption}</option>
-          </select>
-        </label>
-
-        <label className="stack-sm">
-          {uiCopy.systemTune.cadenceLabel}
-          <select
-            onChange={(event) =>
-              updateSignal(signal.name, {
-                cadence: event.target.value as SignalConfig['cadence']
-              })
-            }
-            value={signal.cadence}
-          >
-            <option value="RANO">{uiCopy.systemTune.cadenceMorning}</option>
-            <option value="DZIEN">{uiCopy.systemTune.cadenceDay}</option>
-            <option value="WIECZOR">{uiCopy.systemTune.cadenceEvening}</option>
-          </select>
-        </label>
-      </div>
-      <small>{signal.activityId ? 'Typ zapisze sie do backendu. Cadence zapisuje sie lokalnie.' : 'Sygnal nie jest jeszcze aktywny.'}</small>
-    </Card>
-  );
 
   return (
     <div className="stack-lg">
@@ -261,42 +215,82 @@ export function SystemTuneClient({ system }: Props) {
         </Banner>
       )}
 
-      <Card tone="elevated" title={`${uiCopy.systemTune.titlePrefix} ${system.name}`} subtitle={uiCopy.systemTune.subtitle}>
+      <Card tone="elevated" title={`Doprecyzowanie: ${system.name}`} subtitle="Typ sygnalu i kiedy ma sens.">
         {isLoading ? (
-          <div className="empty-state">Ladowanie sygnalow...</div>
+          <div className="empty-state">Ladowanie konfiguracji systemu...</div>
         ) : configs.length === 0 ? (
-          <div className="empty-state">Brak sygnalow do dopasowania.</div>
+          <div className="empty-state">Brak sygnalow do dopracowania w tym systemie.</div>
         ) : linkedCount === 0 ? (
           <div className="stack">
-            <div className="empty-state">Najpierw aktywuj system, zeby tuning mial efekt.</div>
+            <div className="empty-state">Najpierw aktywuj system, aby dopracowac sygnaly.</div>
             <Link className="inline-link" href={`/systems/${system.id}`}>
               Wroc do aktywacji systemu
             </Link>
           </div>
         ) : (
           <div className="stack">
-            <Card tone="default" title="Podstawowe (na co dzien)" subtitle="Najpierw dopracuj sygnaly core.">
-              <div className="stack">{coreConfigs.map(renderSignal)}</div>
-            </Card>
-            <Card tone="default" title="Rozszerzone (po tygodniu)" subtitle="Rozszerzenia uruchamiaj, gdy core jest stabilny.">
-              <div className="stack">{advancedConfigs.map(renderSignal)}</div>
-            </Card>
+            {configs.map((signal) => (
+              <Card
+                key={signal.name}
+                subtitle={signal.id ? 'Dopasuj pod swoj rytm' : 'Ten sygnal nie jest jeszcze aktywny'}
+                title={signal.name}
+              >
+                <div className="grid grid-2">
+                  <label className="stack-sm">
+                    Typ
+                    <select
+                      disabled={!signal.id}
+                      onChange={(event) =>
+                        updateSignal(signal.name, {
+                          type: event.target.value as SignalConfig['type']
+                        })
+                      }
+                      value={signal.type}
+                    >
+                      <option value="BOOLEAN">Tak/Nie</option>
+                      <option value="NUMERIC_0_10">Skala 0-10</option>
+                    </select>
+                  </label>
+
+                  <label className="stack-sm">
+                    Kiedy ma sens
+                    <select
+                      onChange={(event) =>
+                        updateSignal(signal.name, {
+                          cadence: event.target.value as SignalConfig['cadence']
+                        })
+                      }
+                      value={signal.cadence}
+                    >
+                      <option value="RANO">Rano</option>
+                      <option value="DZIEN">W ciagu dnia</option>
+                      <option value="WIECZOR">Wieczorem</option>
+                    </select>
+                  </label>
+                </div>
+                {signal.id ? (
+                  <small>Zrodlo: {signal.source === 'core' ? 'Core' : 'Advanced'} • Zapis typu idzie do backendu.</small>
+                ) : (
+                  <small>Aktywuj system (core lub core + advanced), aby zapisac typ sygnalu do backendu.</small>
+                )}
+              </Card>
+            ))}
           </div>
         )}
       </Card>
 
       {saved && (
-        <Banner tone="success" title={uiCopy.systemTune.savedTitle}>
-          Konfiguracja zapisana. Wroc do codziennego check-inu i sprawdz, czy decyzje sa prostsze.
+        <Banner tone="success" title="Zapisane lokalnie">
+          Cadence zapisany lokalnie, typ sygnalu zapisany dla aktywnych pozycji.
         </Banner>
       )}
 
       <div className="inline-actions">
         <Button disabled={isLoading || isSaving || !hasChanges} onClick={() => void save()} size="lg" variant="primary">
-          {isSaving ? 'Zapisywanie...' : hasChanges ? 'Zapisz dopasowanie' : 'Brak zmian'}
+          {isSaving ? 'Zapisywanie...' : hasChanges ? 'Zapisz dopracowanie' : 'Brak zmian'}
         </Button>
-        <Link className="inline-link" href="/">
-          Przejdz do Dzisiaj
+        <Link className="inline-link" href={`/systems/${system.id}`}>
+          Wroc do systemu
         </Link>
       </div>
     </div>

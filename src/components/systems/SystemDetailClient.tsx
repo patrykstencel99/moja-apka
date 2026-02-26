@@ -1,12 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { Banner } from '@/components/ui/Banner';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { uiCopy } from '@/lib/copy';
 import { STORAGE_KEYS, readStringArray, writeStringArray } from '@/lib/state/local-storage';
 import type { StarterSystem } from '@/types/domain';
 
@@ -14,30 +13,17 @@ type Props = {
   system: StarterSystem;
 };
 
-function cadenceLabel(value: 'RANO' | 'DZIEN' | 'WIECZOR') {
-  if (value === 'RANO') {
-    return uiCopy.systemDetail.cadenceMorning;
-  }
-  if (value === 'WIECZOR') {
-    return uiCopy.systemDetail.cadenceEvening;
-  }
-  return uiCopy.systemDetail.cadenceDay;
-}
-
 export function SystemDetailClient({ system }: Props) {
   const [info, setInfo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pendingMode, setPendingMode] = useState<'core' | 'full' | null>(null);
-
-  const todaySignals = useMemo(() => system.coreSignals.slice(0, 3), [system.coreSignals]);
-  const afterWeekSignals = useMemo(() => system.advancedSignals.slice(0, 3), [system.advancedSignals]);
+  const [pendingMode, setPendingMode] = useState<'core' | 'advanced' | null>(null);
 
   const activate = async (includeOptional: boolean) => {
     if (pendingMode) {
       return;
     }
 
-    setPendingMode(includeOptional ? 'full' : 'core');
+    setPendingMode(includeOptional ? 'advanced' : 'core');
     setInfo(null);
     setError(null);
 
@@ -49,7 +35,7 @@ export function SystemDetailClient({ system }: Props) {
       });
 
       if (!response.ok) {
-        setError(uiCopy.systemDetail.activateError);
+        setError('Nie udalo sie aktywowac systemu.');
         return;
       }
 
@@ -57,9 +43,9 @@ export function SystemDetailClient({ system }: Props) {
       const next = [system.id, ...active.filter((id) => id !== system.id)].slice(0, 2);
       writeStringArray(STORAGE_KEYS.activeSystems, next);
 
-      setInfo(includeOptional ? 'System aktywowany (podstawowe + rozszerzone).' : 'System aktywowany (podstawowe).');
+      setInfo(includeOptional ? 'System aktywowany (core + advanced).' : 'System aktywowany (core).');
     } catch {
-      setError(uiCopy.systemDetail.activateError);
+      setError('Nie udalo sie aktywowac systemu.');
     } finally {
       setPendingMode(null);
     }
@@ -68,65 +54,52 @@ export function SystemDetailClient({ system }: Props) {
   return (
     <div className="stack-lg">
       {(error || info) && (
-        <Banner tone={error ? 'danger' : 'success'} title={error ? uiCopy.systemDetail.bannerProblem : uiCopy.systemDetail.bannerStatus}>
+        <Banner tone={error ? 'danger' : 'success'} title={error ? 'Problem' : 'Status'}>
           {error ?? info}
         </Banner>
       )}
 
-      <Card tone="elevated" title={system.name} subtitle="Po co ten system i jak go uzywac dzisiaj.">
+      <Card tone="elevated" title={system.name} subtitle="Co ten system stabilizuje">
         <p>{system.outcome}</p>
-        <div className="panel-subtle">
-          <small>
-            <strong>1. Dzisiaj:</strong> zaznacz 3 sygnaly podstawowe.
-          </small>
-          <small>
-            <strong>2. Przez 7 dni:</strong> utrzymaj codzienny check-in.
-          </small>
-          <small>
-            <strong>3. Potem:</strong> dorzuc 1-2 sygnaly rozszerzone.
-          </small>
-        </div>
       </Card>
 
-      <Card tone="elevated" title="Dzisiaj (core)" subtitle="To jest Twoja lista decyzji na kazdy dzien.">
-        <div className="stack">
-          {todaySignals.map((signal) => (
-            <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${cadenceLabel(signal.cadence)}`} title={signal.name}>
-              <small>{signal.definition}</small>
-            </Card>
-          ))}
-        </div>
-      </Card>
-
-      <Card tone="default" title="Po 7 dniach (advanced)" subtitle="Rozszerzenia wlaczaj dopiero gdy core jest stabilny.">
-        <div className="stack">
-          {afterWeekSignals.length === 0 ? (
-            <div className="empty-state">Brak sygnalow rozszerzonych.</div>
-          ) : (
-            afterWeekSignals.map((signal) => (
-              <Card key={signal.name} subtitle={`${uiCopy.systemDetail.cadencePrefix} ${cadenceLabel(signal.cadence)}`} title={signal.name}>
+      <Card tone="elevated" title="Core sygnaly" subtitle="3 sygnaly bazowe z jasna definicja zaliczenia.">
+        {system.coreSignals.length === 0 ? (
+          <div className="empty-state">Brak sygnalow core w tym systemie.</div>
+        ) : (
+          <div className="stack">
+            {system.coreSignals.map((signal) => (
+              <Card key={signal.name} subtitle={`Kiedy: ${signal.cadence}`} title={signal.name}>
                 <small>{signal.definition}</small>
               </Card>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card tone="default" title="Opcjonalne sygnaly" subtitle="2-4 sygnaly do rozszerzenia po 7 dniach.">
+        {system.advancedSignals.length === 0 ? (
+          <div className="empty-state">Brak sygnalow opcjonalnych w tym systemie.</div>
+        ) : (
+          <div className="stack">
+            {system.advancedSignals.map((signal) => (
+              <Card key={signal.name} subtitle={`Kiedy: ${signal.cadence}`} title={signal.name}>
+                <small>{signal.definition}</small>
+              </Card>
+            ))}
+          </div>
+        )}
       </Card>
 
       <div className="inline-actions">
-        <Button disabled={pendingMode !== null} onClick={() => void activate(false)} size="lg" variant="primary">
-          {pendingMode === 'core' ? 'Aktywacja...' : 'Aktywuj podstawowe'}
+        <Button onClick={() => void activate(false)} size="lg" variant="primary" disabled={pendingMode !== null}>
+          {pendingMode === 'core' ? 'Aktywacja...' : 'Aktywuj core'}
         </Button>
-        <Button disabled={pendingMode !== null} onClick={() => void activate(true)} size="lg" variant="ghost">
-          {pendingMode === 'full' ? 'Aktywacja...' : 'Aktywuj podstawowe + rozszerzone'}
+        <Button onClick={() => void activate(true)} size="lg" variant="ghost" disabled={pendingMode !== null}>
+          {pendingMode === 'advanced' ? 'Aktywacja...' : 'Aktywuj core + advanced'}
         </Button>
-      </div>
-
-      <div className="inline-actions">
         <Link className="inline-link" href={`/systems/${system.id}/tune`}>
-          Dopasuj sygnaly
-        </Link>
-        <Link className="inline-link" href="/">
-          Przejdz do Dzisiaj
+          Przejdz do dopracowania
         </Link>
       </div>
     </div>
