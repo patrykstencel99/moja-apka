@@ -1,6 +1,5 @@
 import { ActivityType } from '@prisma/client';
 
-import { apiCopy } from '@/lib/copy';
 import { plusDays } from '@/lib/date';
 import type { Insight, MacroPattern } from '@/types/domain';
 
@@ -20,6 +19,27 @@ export type CheckInForInsights = {
   energy: number;
   createdAt: Date;
   values: CheckInValue[];
+};
+
+type Window = 'weekly' | 'monthly';
+type DataVolume = 'low' | 'medium' | 'high';
+
+const MIN_UNIQUE_DAYS_FOR_INSIGHTS = 7;
+
+const HIGH_DATA_RULES: Record<
+  Window,
+  { minUniqueDays: number; minCheckins: number; minTrackedFactors: number }
+> = {
+  weekly: {
+    minUniqueDays: 7,
+    minCheckins: 12,
+    minTrackedFactors: 4
+  },
+  monthly: {
+    minUniqueDays: 21,
+    minCheckins: 28,
+    minTrackedFactors: 5
+  }
 };
 
 function mean(values: number[]): number {
@@ -136,11 +156,68 @@ function activityCatalog(checkins: CheckInForInsights[]) {
   return map;
 }
 
+function classifyDataVolume(params: {
+  window: Window;
+  uniqueDays: number;
+  totalCheckins: number;
+  trackedFactors: number;
+}): DataVolume {
+  const { window, uniqueDays, totalCheckins, trackedFactors } = params;
+  if (uniqueDays < MIN_UNIQUE_DAYS_FOR_INSIGHTS) {
+    return 'low';
+  }
+
+  const highRules = HIGH_DATA_RULES[window];
+  if (
+    uniqueDays >= highRules.minUniqueDays &&
+    totalCheckins >= highRules.minCheckins &&
+    trackedFactors >= highRules.minTrackedFactors
+  ) {
+    return 'high';
+  }
+
+  return 'medium';
+}
+
+function effectStrengthLabel(effect: number): string {
+  const abs = Math.abs(effect);
+  if (abs >= 0.9) {
+    return 'mocna';
+  }
+  if (abs >= 0.45) {
+    return 'srednia';
+  }
+  return 'slaba';
+}
+
+function reportMessage(params: {
+  insufficientData: boolean;
+  dataVolume: DataVolume;
+  insightCount: number;
+}): string {
+  const { insufficientData, dataVolume, insightCount } = params;
+
+  if (insufficientData) {
+    return `Za malo danych. Wprowadzaj wpisy przez minimum ${MIN_UNIQUE_DAYS_FOR_INSIGHTS} dni, aby zobaczyc insighty.`;
+  }
+
+  if (insightCount === 0) {
+    return dataVolume === 'high'
+      ? 'Duzo danych, ale brak stabilnych sygnalow. To moze oznaczac szum albo zbyt malo zroznicowane eksperymenty.'
+      : 'Dane sa, ale sygnaly sa jeszcze slabe. Kontynuuj tracking i testuj bardziej kontrastowe eksperymenty.';
+  }
+
+  if (dataVolume === 'high') {
+    return 'Duzo danych. Traktuj insighty jako priorytetowe hipotezy na kolejne iteracje.';
+  }
+  return 'Wnioski sa hipotezami statystycznymi, nie dowodem przyczynowosci.';
+}
+
 function computeBooleanInsight(params: {
   activityName: string;
   lag: 0 | 1;
   observations: Array<{ x: number; y: number }>;
-  window: 'weekly' | 'monthly';
+  window: Window;
   stability: number;
 }): Insight | null {
   const { observations, activityName, lag, window, stability } = params;
@@ -156,6 +233,8 @@ function computeBooleanInsight(params: {
   }
 
   const diff = mean(trueGroup) - mean(falseGroup);
+  const meanTrue = mean(trueGroup);
+  const meanFalse = mean(falseGroup);
   const pooledStd = Math.sqrt((std(trueGroup) ** 2 + std(falseGroup) ** 2) / 2);
   const effect = pooledStd === 0 ? diff / 10 : diff / pooledStd;
 
@@ -177,10 +256,7 @@ function computeBooleanInsight(params: {
     lag,
     window,
     effect,
-    explanation:
-      diff >= 0
-        ? `Mozliwe powiazanie: wystapienie "${activityName}" koreluje z wyzszym stanem dnia.`
-        : `Mozliwe powiazanie: wystapienie "${activityName}" koreluje z nizszym stanem dnia.`
+    explanation: `Sredni stan z "${activityName}" to ${meanTrue.toFixed(2)} vs ${meanFalse.toFixed(2)} bez sygnalu (n=${observations.length}, sila ${effectStrengthLabel(effect)}).`
   };
 }
 
@@ -188,7 +264,7 @@ function computeNumericInsight(params: {
   activityName: string;
   lag: 0 | 1;
   observations: Array<{ x: number; y: number }>;
-  window: 'weekly' | 'monthly';
+  window: Window;
   stability: number;
 }): Insight | null {
   const { observations, activityName, lag, window, stability } = params;
@@ -218,10 +294,7 @@ function computeNumericInsight(params: {
     lag,
     window,
     effect: corr,
-    explanation:
-      corr >= 0
-        ? `Mozliwe powiazanie: wyzsza intensywnosc "${activityName}" idzie z lepszym stanem.`
-        : `Mozliwe powiazanie: wyzsza intensywnosc "${activityName}" idzie z gorszym stanem.`
+    explanation: `Korelacja Spearmana dla "${activityName}" to ${corr.toFixed(2)} (n=${observations.length}, sila ${effectStrengthLabel(corr)}).`
   };
 }
 
@@ -277,20 +350,43 @@ function buildMacroPatterns(checkins: CheckInForInsights[]): MacroPattern[] {
 
 export function buildInsightsReport(params: {
   checkins: CheckInForInsights[];
-  window: 'weekly' | 'monthly';
+  window: Window;
   from: string;
   to: string;
 }) {
   const { checkins, window, from, to } = params;
   const uniqueDays = new Set(checkins.map((c) => c.localDate)).size;
+  const totalCheckins = checkins.length;
+  const catalog = activityCatalog(checkins);
+  const trackedFactors = catalog.size;
+  const dataVolume = classifyDataVolume({
+    window,
+    uniqueDays,
+    totalCheckins,
+    trackedFactors
+  });
+  const thresholds = {
+    low: {
+      minUniqueDays: MIN_UNIQUE_DAYS_FOR_INSIGHTS
+    },
+    high: HIGH_DATA_RULES[window]
+  };
 
-  if (uniqueDays < 7) {
+  if (dataVolume === 'low') {
     return {
       from,
       to,
       uniqueDays,
+      totalCheckins,
+      trackedFactors,
+      dataVolume,
+      thresholds,
       insufficientData: true,
-      message: apiCopy.reports.insufficientDataMessage,
+      message: reportMessage({
+        insufficientData: true,
+        dataVolume,
+        insightCount: 0
+      }),
       positive: [] as Insight[],
       negative: [] as Insight[],
       macroPatterns: [] as MacroPattern[]
@@ -298,7 +394,6 @@ export function buildInsightsReport(params: {
   }
 
   const dailyStates = dailyStateMap(checkins);
-  const catalog = activityCatalog(checkins);
   const insights: Insight[] = [];
 
   for (const [activityId, info] of catalog.entries()) {
@@ -395,17 +490,36 @@ export function buildInsightsReport(params: {
     .filter((i) => i.confidence >= 35)
     .sort((a, b) => Math.abs(b.effect) * b.confidence - Math.abs(a.effect) * a.confidence);
 
-  const positive = ranked.filter((i) => i.direction === 'positive').slice(0, 3);
-  const negative = ranked.filter((i) => i.direction === 'negative').slice(0, 3);
+  const deduplicatedByFactor = new Map<string, Insight>();
+  for (const item of ranked) {
+    const key = `${item.factor}:${item.direction}`;
+    if (!deduplicatedByFactor.has(key)) {
+      deduplicatedByFactor.set(key, item);
+    }
+  }
+
+  const deduplicated = Array.from(deduplicatedByFactor.values());
+  const positive = deduplicated.filter((i) => i.direction === 'positive').slice(0, 3);
+  const negative = deduplicated.filter((i) => i.direction === 'negative').slice(0, 3);
+  const insightCount = positive.length + negative.length;
+  const macroPatterns = dataVolume === 'high' ? buildMacroPatterns(checkins) : [];
 
   return {
     from,
     to,
     uniqueDays,
+    totalCheckins,
+    trackedFactors,
+    dataVolume,
+    thresholds,
     insufficientData: false,
-    message: apiCopy.reports.hypothesisMessage,
+    message: reportMessage({
+      insufficientData: false,
+      dataVolume,
+      insightCount
+    }),
     positive,
     negative,
-    macroPatterns: buildMacroPatterns(checkins)
+    macroPatterns
   };
 }
