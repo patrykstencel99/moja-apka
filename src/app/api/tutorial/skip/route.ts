@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     const context = await getTutorialContext(user.id);
-    if (!context.enabled || !context.inRollout || !context.progress) {
+    if (!context.enabled || !context.progress) {
       return jsonError(apiCopy.tutorial.notEligible, 403);
     }
 

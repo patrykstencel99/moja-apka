@@ -21,6 +21,12 @@ export type PushDeliveryResult = {
   detail: string;
 };
 
+export type PushTransportReadiness = {
+  ready: boolean;
+  mode: PushTransportMode;
+  reason: string | null;
+};
+
 type VapidConfig = {
   subject: string;
   publicKey: string;
@@ -122,6 +128,33 @@ function ensureWebPushConfigured() {
   } as const;
 }
 
+export function getPushTransportReadiness(): PushTransportReadiness {
+  const mode = resolvePushTransportMode();
+
+  if (mode === 'simulate' || mode === 'disabled') {
+    return {
+      ready: true,
+      mode,
+      reason: null
+    };
+  }
+
+  const configured = ensureWebPushConfigured();
+  if (!configured.ok) {
+    return {
+      ready: false,
+      mode,
+      reason: configured.detail
+    };
+  }
+
+  return {
+    ready: true,
+    mode,
+    reason: null
+  };
+}
+
 function toWebPushSubscription(input: PushSubscriptionInput): PushSubscription {
   return {
     endpoint: input.endpoint,
@@ -187,7 +220,7 @@ export async function sendPushNotification(params: {
     return {
       ok: false,
       hardFail: false,
-      temporary: false,
+      temporary: true,
       detail: configured.detail
     };
   }

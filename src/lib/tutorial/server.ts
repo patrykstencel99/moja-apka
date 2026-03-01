@@ -177,8 +177,12 @@ export async function getTutorialContext(userId: string): Promise<TutorialContex
     currentStepId = asStepId(progress.currentStepId, definition) ?? resolveCurrentStepId(completedStepIds, definition);
   }
 
+  const rolloutBypass = progress.state === TutorialState.IN_PROGRESS;
   const eligible =
-    enabled && inRollout && progress.state !== TutorialState.COMPLETED && progress.state !== TutorialState.SKIPPED;
+    enabled &&
+    (inRollout || rolloutBypass) &&
+    progress.state !== TutorialState.COMPLETED &&
+    progress.state !== TutorialState.SKIPPED;
 
   return {
     enabled,

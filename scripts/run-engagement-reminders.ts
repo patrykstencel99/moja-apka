@@ -13,7 +13,7 @@ import {
 } from '../src/lib/engagement';
 import { isEngagementLoopV1Enabled } from '../src/lib/engagement-flags';
 import { prisma } from '../src/lib/prisma';
-import { normalizePushPayload, sendPushNotification } from '../src/lib/push-transport';
+import { getPushTransportReadiness, normalizePushPayload, sendPushNotification } from '../src/lib/push-transport';
 
 function hasArg(name: string) {
   return process.argv.includes(name);
@@ -139,6 +139,11 @@ async function main() {
   const limit = limitArg ? Number(limitArg.split('=')[1]) : 200;
   const safeLimit = Number.isFinite(limit) ? limit : 200;
   const now = new Date();
+
+  const readiness = getPushTransportReadiness();
+  if (!readiness.ready) {
+    throw new Error(`[engagement-reminders] push transport misconfigured (${readiness.mode}): ${readiness.reason}`);
+  }
 
   const enqueuedCount = await enqueueDispatches(now, safeLimit);
   console.log(`[engagement-reminders] enqueuedCandidates=${enqueuedCount} dryRun=${dryRun}`);

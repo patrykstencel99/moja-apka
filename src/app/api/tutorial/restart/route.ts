@@ -24,26 +24,42 @@ export async function POST(request: NextRequest) {
 
     const context = await getTutorialContext(user.id);
 
-    if (!context.enabled || !context.inRollout || !context.progress) {
+    if (!context.enabled) {
       return jsonError(apiCopy.tutorial.notEligible, 403);
     }
 
     const firstStepId = context.definition.steps[0]?.id ?? null;
 
     await prisma.$transaction(async (tx) => {
-      await tx.tutorialProgress.update({
-        where: {
-          userId: user.id
-        },
-        data: {
-          state: TutorialState.IN_PROGRESS,
-          currentStepId: firstStepId,
-          completedStepIds: [],
-          startedAt: new Date(),
-          firstCheckinAt: null,
-          completedAt: null
-        }
-      });
+      if (!context.progress) {
+        await tx.tutorialProgress.create({
+          data: {
+            userId: user.id,
+            tutorialKey: context.tutorialKey,
+            version: context.version,
+            state: TutorialState.IN_PROGRESS,
+            currentStepId: firstStepId,
+            completedStepIds: [],
+            startedAt: new Date(),
+            firstCheckinAt: null,
+            completedAt: null
+          }
+        });
+      } else {
+        await tx.tutorialProgress.update({
+          where: {
+            userId: user.id
+          },
+          data: {
+            state: TutorialState.IN_PROGRESS,
+            currentStepId: firstStepId,
+            completedStepIds: [],
+            startedAt: new Date(),
+            firstCheckinAt: null,
+            completedAt: null
+          }
+        });
+      }
 
       await createTutorialEvent(tx, {
         userId: user.id,

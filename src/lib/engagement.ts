@@ -81,6 +81,80 @@ function localTimeParts(date: Date, timezone: string): { localDate: string; hour
   };
 }
 
+function parseLocalDate(localDate: string): { year: number; month: number; day: number } | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = localDate.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
+function parseOffsetMinutes(value: string): number | null {
+  const normalized = value.trim();
+  if (normalized === 'GMT' || normalized === 'UTC') {
+    return 0;
+  }
+
+  const match = normalized.match(/^GMT([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) {
+    return null;
+  }
+
+  const sign = match[1] === '-' ? -1 : 1;
+  const hours = Number(match[2]);
+  const minutes = Number(match[3] ?? '0');
+
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return null;
+  }
+
+  return sign * (hours * 60 + minutes);
+}
+
+function resolveTimeZoneOffsetMinutes(date: Date, timezone: string): number {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    timeZoneName: 'shortOffset',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const part = fmt.formatToParts(date).find((entry) => entry.type === 'timeZoneName');
+  const parsed = parseOffsetMinutes(part?.value ?? 'GMT');
+  return parsed ?? 0;
+}
+
+function resolveUtcDateForLocalTime(params: {
+  localDate: string;
+  hour: number;
+  minute: number;
+  timezone: string;
+}): Date | null {
+  const parsed = parseLocalDate(params.localDate);
+  if (!parsed) {
+    return null;
+  }
+
+  let utcMs = Date.UTC(parsed.year, parsed.month - 1, parsed.day, params.hour, params.minute, 0, 0);
+
+  // Resolve DST transitions by re-evaluating offset after first conversion.
+  for (let i = 0; i < 2; i += 1) {
+    const offsetMinutes = resolveTimeZoneOffsetMinutes(new Date(utcMs), params.timezone);
+    utcMs = Date.UTC(parsed.year, parsed.month - 1, parsed.day, params.hour, params.minute, 0, 0) - offsetMinutes * 60 * 1000;
+  }
+
+  return new Date(utcMs);
+}
+
 export function resolveCheckInSlot(params: {
   timestamp: Date;
   timezone: string;
@@ -188,7 +262,8 @@ export async function upsertEngagementAfterCheckIn(params: {
     const nextSlot2Done = slot === 'SLOT_2' ? true : slot2AlreadyDone;
     const perfectDay = nextSlot1Done && nextSlot2Done;
     const perfectDayJustUnlocked = perfectDay && !(existing?.perfectDay ?? false);
-    const rescueQuestWasActive = (existing?.rescueQuestActive ?? false) || (comebackTriggered && !slot2AlreadyDone);
+    const rescueAlreadyCompleted = Boolean(existing?.rescueCompletedAt);
+    const rescueQuestWasActive = !rescueAlreadyCompleted && ((existing?.rescueQuestActive ?? false) || comebackTriggered);
     const rescueCompletedNow = rescueQuestWasActive && slotJustCompleted && !existing?.rescueCompletedAt;
 
     const nextData = {
@@ -424,10 +499,14 @@ function resolveNextReminderAt(params: {
   }
 
   const targetHour = params.missingSlot === 'SLOT_1' ? clampHour(params.user.slot1HourLocal) : clampHour(params.user.slot2HourLocal);
-  const targetIsoGuess = `${params.localDate}T${String(targetHour).padStart(2, '0')}:00:00.000Z`;
-  const target = new Date(targetIsoGuess);
+  const target = resolveUtcDateForLocalTime({
+    localDate: params.localDate,
+    hour: targetHour,
+    minute: 0,
+    timezone: params.user.timezone
+  });
 
-  if (!Number.isFinite(target.getTime()) || target <= params.now) {
+  if (!target || !Number.isFinite(target.getTime()) || target <= params.now) {
     return new Date(params.now.getTime() + PUSH_COOLDOWN_HOURS * 60 * 60 * 1000).toISOString();
   }
 
